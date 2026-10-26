@@ -1,0 +1,38 @@
+# Environment & Virtualenvs
+.venv/
+env/
+venv/
+ENV/
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Database & SQLite files
+*.db
+*.sqlite
+*.sqlite3
+koshpramaan.db
+
+# Node & Frontend
+node_modules/
+frontend/dist/
+frontend/.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
