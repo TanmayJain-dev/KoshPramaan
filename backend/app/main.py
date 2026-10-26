@@ -45,13 +45,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers
-app.include_router(clock_router.router)
-app.include_router(audit_router.router)
-app.include_router(rules_router.router)
-app.include_router(institutions_router.router)
-app.include_router(fdrs_router.router)
-app.include_router(demo_router.router)
+# Include Routers (Both root and /api prefixes supported for flexible deployment)
+for prefix in ["", "/api"]:
+    app.include_router(clock_router.router, prefix=prefix)
+    app.include_router(audit_router.router, prefix=prefix)
+    app.include_router(rules_router.router, prefix=prefix)
+    app.include_router(institutions_router.router, prefix=prefix)
+    app.include_router(fdrs_router.router, prefix=prefix)
+    app.include_router(demo_router.router, prefix=prefix)
+
+
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "service": "koshpramaan-api"}
 
 
 @app.get("/")
@@ -62,12 +69,19 @@ def root():
         "notice": "Demo data, mocked integrations",
         "docs_url": "/docs",
         "endpoints": [
-            "/clock",
-            "/clock/advance",
-            "/clock/reset",
-            "/audit/verify",
-            "/audit/events",
-            "/rules",
+            "/api/clock",
+            "/api/clock/advance",
+            "/api/clock/reset",
+            "/api/audit/verify",
+            "/api/audit/events",
+            "/api/rules",
+            "/api/institutions",
+            "/api/fdrs",
+            "/api/demo/status",
+            "/api/demo/reset",
+        ],
+    }
+
             "/institutions",
             "/fdrs",
             "/demo/status",
