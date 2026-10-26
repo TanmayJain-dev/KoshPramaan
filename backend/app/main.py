@@ -82,9 +82,3 @@ def root():
         ],
     }
 
-            "/institutions",
-            "/fdrs",
-            "/demo/status",
-            "/demo/reset",
-        ],
-    }
