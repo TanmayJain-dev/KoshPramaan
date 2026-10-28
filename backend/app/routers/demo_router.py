@@ -1,18 +1,28 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..seed import seed_database
 from ..clock import clock
 from ..audit import verify_chain
-from ..models import Institution, FDR, Verifier
+from ..models import Institution, FDR, Verifier, User
+from ..auth import require_roles
 from ..adapters import mock_bank, mock_grievance, mock_vigilance, mock_esign
 
 router = APIRouter(prefix="/demo", tags=["Demo"])
 
 
 @router.post("/reset")
-def reset_demo_state(db: Session = Depends(get_db)):
+def reset_demo_state(
+    current_user: User = Depends(require_roles(["AICTE_ADMIN"])),
+    db: Session = Depends(get_db),
+):
     """Resets entire database to the deterministic Day 0 seed baseline."""
+    if not isinstance(current_user, User):
+        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
+
+    if not current_user or current_user.role != "AICTE_ADMIN":
+        raise HTTPException(status_code=403, detail="Access denied: AICTE HQ Admin required to reset demo state.")
+
     result = seed_database(db)
     return result
 

@@ -14,6 +14,7 @@ from .models import (
     Release,
     HeartbeatRun,
     Event,
+    User,
 )
 from .clock import clock, BASE_SIMULATED_TIME
 from .audit import record_event, GENESIS_HASH
@@ -125,6 +126,7 @@ def seed_database(db: Session = None) -> dict:
         Base.metadata.create_all(bind=engine)
 
         # Clear existing rows cleanly (avoids SQLite schema lock deadlocks)
+        db.query(User).delete()
         db.query(Confirmation).delete()
         db.query(FieldClaim).delete()
         db.query(Release).delete()
@@ -234,6 +236,116 @@ def seed_database(db: Session = None) -> dict:
         db.add_all(verifiers_data)
         db.commit()
 
+        # 4b. Seed Demo Personas across all 6 roles
+        users_data = [
+            User(
+                id="USR-MAKER-001",
+                username="maker_apex",
+                name="Aakash Verma",
+                email="aakash.verma@apex.edu",
+                role="INSTITUTION_MAKER",
+                institution_id="INST-001",
+                region="Northern Region",
+                designation="Accounts Officer",
+                org_name="Apex Institute of Technology",
+            ),
+            User(
+                id="USR-CHECKER-001",
+                username="checker_apex",
+                name="Dr. Sunita Rao",
+                email="sunita.rao@apex.edu",
+                role="INSTITUTION_CHECKER",
+                institution_id="INST-001",
+                region="Northern Region",
+                designation="Dean of Finance & Registrar",
+                org_name="Apex Institute of Technology",
+            ),
+            User(
+                id="USR-MAKER-002",
+                username="maker_bharati",
+                name="Ramesh Pawar",
+                email="ramesh.pawar@bharati.edu",
+                role="INSTITUTION_MAKER",
+                institution_id="INST-002",
+                region="Western Region",
+                designation="Admin Superintendent",
+                org_name="Bharati Polytechnic",
+            ),
+            User(
+                id="USR-RO-001",
+                username="ro_north",
+                name="Dr. Vikram Seth",
+                email="vikram.seth@aicte-india.org",
+                role="REGIONAL_OFFICER",
+                region="Northern Region",
+                designation="Regional Officer & Director",
+                org_name="Northern Regional Office, Chandigarh",
+            ),
+            User(
+                id="USR-RO-002",
+                username="ro_west",
+                name="Kavita Deshmukh",
+                email="kavita.deshmukh@aicte-india.org",
+                role="REGIONAL_OFFICER",
+                region="Western Region",
+                designation="Regional Officer",
+                org_name="Western Regional Office, Mumbai",
+            ),
+            User(
+                id="USR-SCRUTINY-001",
+                username="scrutiny_officer",
+                name="Arjun Nair",
+                email="arjun.nair@aicte-india.org",
+                role="SCRUTINY_OFFICER",
+                designation="Chief Scrutiny & Vigilance Officer",
+                org_name="AICTE Vigilance & Legal Scrutiny Cell",
+            ),
+            User(
+                id="USR-BANK-001",
+                username="bank_sbi",
+                name="Rajiv Sharma",
+                email="rajiv.sharma@sbi.mock",
+                role="BANK_VERIFIER",
+                bank="State Bank of India",
+                verifier_id="VER-001",
+                designation="Chief Manager (Lien Cell)",
+                org_name="State Bank of India",
+            ),
+            User(
+                id="USR-BANK-002",
+                username="bank_pnb",
+                name="Priya Patel",
+                email="priya.patel@pnb.mock",
+                role="BANK_VERIFIER",
+                bank="Punjab National Bank",
+                verifier_id="VER-002",
+                designation="Senior Manager (Institutional Dep.)",
+                org_name="Punjab National Bank",
+            ),
+            User(
+                id="USR-BANK-003",
+                username="bank_bob",
+                name="Amit Verma",
+                email="amit.verma@bob.mock",
+                role="BANK_VERIFIER",
+                bank="Bank of Baroda",
+                verifier_id="VER-003",
+                designation="Branch Manager",
+                org_name="Bank of Baroda",
+            ),
+            User(
+                id="USR-ADMIN-001",
+                username="aicte_admin",
+                name="Prof. Anil Sahasrabudhe",
+                email="admin@aicte-india.org",
+                role="AICTE_ADMIN",
+                designation="Member Secretary & HQ Admin",
+                org_name="AICTE Headquarters, New Delhi",
+            ),
+        ]
+        db.add_all(users_data)
+        db.commit()
+
         # 5. Seed FDRs
         # FDR 1: Clean, hero institution
         fp_1 = compute_fdr_fingerprint("SBI-DEL-2024-8891", "State Bank of India", "Main Branch New Delhi")
@@ -249,6 +361,10 @@ def seed_database(db: Session = None) -> dict:
             maturity_date="2034-04-01",
             lien_clause_ok=True,
             status="active",
+            workflow_status="RO_APPROVED",
+            created_by="USR-MAKER-001",
+            checked_by="USR-CHECKER-001",
+            ro_by="USR-RO-001",
             fingerprint=fp_1,
             doc_hash=compute_doc_hash("FDR-APEX-001-SCAN-CLEAN-MOCK"),
         )
@@ -267,6 +383,10 @@ def seed_database(db: Session = None) -> dict:
             maturity_date="2032-05-15",
             lien_clause_ok=True,
             status="discrepancy_locked",
+            workflow_status="RO_REVIEW",
+            created_by="USR-MAKER-001",
+            checked_by="USR-CHECKER-001",
+            checker_remarks="Approved internally; forwarded for RO scrutiny.",
             fingerprint=fp_2,
             doc_hash=compute_doc_hash("FDR-APEX-002-SCAN-MISMATCH-MOCK"),
         )
@@ -285,6 +405,10 @@ def seed_database(db: Session = None) -> dict:
             maturity_date="2030-06-01",
             lien_clause_ok=True,
             status="active",
+            workflow_status="RO_APPROVED",
+            created_by="USR-MAKER-001",
+            checked_by="USR-CHECKER-001",
+            ro_by="USR-RO-001",
             fingerprint=fp_3,
             doc_hash=compute_doc_hash("FDR-APEX-003-SCAN-DAY200-MOCK"),
         )
@@ -302,6 +426,8 @@ def seed_database(db: Session = None) -> dict:
             maturity_date="2034-04-01",
             lien_clause_ok=True,
             status="duplicate_flagged",
+            workflow_status="RO_REVIEW",
+            created_by="USR-MAKER-002",
             fingerprint=fp_1,  # SHARED FINGERPRINT!
             doc_hash=compute_doc_hash("FDR-BHARATI-001-SCAN-DUPLICATE-MOCK"),
         )
@@ -320,11 +446,32 @@ def seed_database(db: Session = None) -> dict:
             maturity_date="2033-01-10",
             lien_clause_ok=True,
             status="active",
+            workflow_status="RO_APPROVED",
             fingerprint=fp_5,
             doc_hash=compute_doc_hash("FDR-ZENITH-001-SCAN-MOCK"),
         )
 
-        db.add_all([fdr_1, fdr_2, fdr_3, fdr_4, fdr_5])
+        # FDR 6: Draft Claim for Maker -> Checker Demo
+        fp_draft = compute_fdr_fingerprint("SBI-DEL-2026-9901", "State Bank of India", "Main Branch New Delhi")
+        fdr_apex_draft = FDR(
+            id="FDR-APEX-004",
+            institution_id="INST-001",
+            receipt_no="SBI-DEL-2026-9901",
+            bank="State Bank of India",
+            branch="Main Branch New Delhi",
+            ifsc="SBIN0000691",
+            principal=1000000.0,
+            issue_date="2026-04-01",
+            maturity_date="2034-04-01",
+            lien_clause_ok=True,
+            status="active",
+            workflow_status="DRAFT",
+            created_by="USR-MAKER-001",
+            fingerprint=fp_draft,
+            doc_hash=compute_doc_hash("FDR-APEX-004-DRAFT-SCAN-MOCK"),
+        )
+
+        db.add_all([fdr_1, fdr_2, fdr_3, fdr_4, fdr_5, fdr_apex_draft])
         db.commit()
 
         # 6. Seed Field Claims
@@ -355,7 +502,13 @@ def seed_database(db: Session = None) -> dict:
         claims_fdr5 = [
             FieldClaim(fdr_id="FDR-ZENITH-001", field="principal", claimed_value="2000000.0", bank_value="2000000.0", trust_level="bank_confirmed", verified_at="2026-04-01T09:00:00+05:30", source="bank_adapter"),
         ]
-        db.add_all(claims_fdr1 + claims_fdr2 + claims_fdr3 + claims_fdr4 + claims_fdr5)
+        # FDR 6: Draft claims
+        claims_fdr_draft = [
+            FieldClaim(fdr_id="FDR-APEX-004", field="principal", claimed_value="1000000.0", bank_value=None, trust_level="claimed", verified_at="2026-04-01T09:00:00+05:30", source="institution_claim"),
+            FieldClaim(fdr_id="FDR-APEX-004", field="maturity_date", claimed_value="2034-04-01", bank_value=None, trust_level="claimed", verified_at="2026-04-01T09:00:00+05:30", source="institution_claim"),
+            FieldClaim(fdr_id="FDR-APEX-004", field="lien_clause", claimed_value="true", bank_value=None, trust_level="claimed", verified_at="2026-04-01T09:00:00+05:30", source="institution_claim"),
+        ]
+        db.add_all(claims_fdr1 + claims_fdr2 + claims_fdr3 + claims_fdr4 + claims_fdr5 + claims_fdr_draft)
         db.commit()
 
         # 7. Seed Liabilities (Rs 4,00,000 faculty-arrears grievance on hero institution)
@@ -385,8 +538,9 @@ def seed_database(db: Session = None) -> dict:
             action="SEED_BASELINE_DATA",
             payload={
                 "institutions_seeded": 3,
-                "fdrs_seeded": 5,
+                "fdrs_seeded": 6,
                 "verifiers_seeded": 3,
+                "users_seeded": 10,
                 "liabilities_seeded": 1,
                 "duplicate_fingerprints_injected": 1,
             },
@@ -397,8 +551,9 @@ def seed_database(db: Session = None) -> dict:
             "status": "success",
             "message": "Demo data successfully seeded to Day 0 baseline.",
             "institutions_count": 3,
-            "fdrs_count": 5,
+            "fdrs_count": 6,
             "verifiers_count": 3,
+            "users_count": 10,
             "liabilities_count": 1,
             "clock_state": clock.get_state(db),
         }

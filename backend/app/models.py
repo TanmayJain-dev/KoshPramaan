@@ -52,9 +52,20 @@ class FDR(Base):
     issue_date = Column(String(32), nullable=False)  # ISO date string e.g. 2024-04-01
     maturity_date = Column(String(32), nullable=False)  # ISO date string e.g. 2032-04-01
     lien_clause_ok = Column(Boolean, default=False, nullable=False)
-    status = Column(String(64), default="active", nullable=False)  # active, closed_early, matured, discrepancy_locked, returned_for_correction
+    status = Column(String(64), default="active", nullable=False)  # active, closed_early, matured, discrepancy_locked, returned_for_correction, duplicate_flagged
     fingerprint = Column(String(64), nullable=False, index=True)
     doc_hash = Column(String(64), nullable=True)
+
+    # Workflow State Machine Fields
+    workflow_status = Column(String(32), default="CHECKER_APPROVED", nullable=False)  # DRAFT, SUBMITTED, CHECKER_APPROVED, RETURNED_TO_MAKER, RO_APPROVED, RO_REJECTED, CLARIFICATION_REQUESTED
+    created_by = Column(String(64), nullable=True)
+    checked_by = Column(String(64), nullable=True)
+    checker_remarks = Column(Text, nullable=True)
+    ro_by = Column(String(64), nullable=True)
+    ro_remarks = Column(Text, nullable=True)
+    submitted_at = Column(String(32), nullable=True)
+    checked_at = Column(String(32), nullable=True)
+    ro_action_at = Column(String(32), nullable=True)
 
     institution = relationship("Institution", back_populates="fdrs")
     field_claims = relationship("FieldClaim", back_populates="fdr", cascade="all, delete-orphan")
@@ -173,3 +184,20 @@ class Event(Base):
     payload = Column(Text, nullable=False)  # JSON string
     prev_hash = Column(String(64), nullable=False)
     hash = Column(String(64), nullable=False)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String(64), primary_key=True)
+    username = Column(String(64), unique=True, nullable=False, index=True)
+    name = Column(String(128), nullable=False)
+    email = Column(String(128), nullable=False)
+    role = Column(String(32), nullable=False, index=True)  # INSTITUTION_MAKER, INSTITUTION_CHECKER, REGIONAL_OFFICER, SCRUTINY_OFFICER, BANK_VERIFIER, AICTE_ADMIN
+    institution_id = Column(String(64), ForeignKey("institutions.id"), nullable=True)
+    region = Column(String(64), nullable=True)  # Northern Region, Western Region
+    bank = Column(String(128), nullable=True)  # State Bank of India, Punjab National Bank, Bank of Baroda
+    verifier_id = Column(String(64), ForeignKey("verifiers.id"), nullable=True)
+    designation = Column(String(128), nullable=True)
+    org_name = Column(String(255), nullable=True)
+

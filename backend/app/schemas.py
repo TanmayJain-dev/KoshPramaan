@@ -72,6 +72,18 @@ class FDROut(BaseModel):
     doc_hash: Optional[str] = None
     field_claims: List[FieldClaimOut] = []
     duplicate_count: Optional[int] = 0
+    workflow_status: str = "CHECKER_APPROVED"
+    created_by: Optional[str] = None
+    checked_by: Optional[str] = None
+    checker_remarks: Optional[str] = None
+    ro_by: Optional[str] = None
+    ro_remarks: Optional[str] = None
+    submitted_at: Optional[str] = None
+    checked_at: Optional[str] = None
+    ro_action_at: Optional[str] = None
+    proof_score: Optional[float] = 100.0
+    decay_risk: Optional[bool] = False
+
 
 
 class LiabilityOut(BaseModel):
@@ -120,3 +132,85 @@ class DemoStatusResponse(BaseModel):
     fdrs_count: int
     verifiers_count: int
     adapters: Dict[str, Any]
+
+
+class UserOut(BaseModel):
+    id: str
+    username: str
+    name: str
+    email: str
+    role: str
+    institution_id: Optional[str] = None
+    region: Optional[str] = None
+    bank: Optional[str] = None
+    verifier_id: Optional[str] = None
+    designation: Optional[str] = None
+    org_name: Optional[str] = None
+
+
+class DemoUserOut(BaseModel):
+    id: str
+    username: str
+    name: str
+    role: str
+    role_name: str
+    org_name: str
+    badge: str
+    description: str
+    institution_id: Optional[str] = None
+    region: Optional[str] = None
+    bank: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    username: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+
+class FDRCreateRequest(BaseModel):
+    receipt_no: str
+    bank: str
+    branch: str
+    ifsc: str
+    principal: float
+    issue_date: str
+    maturity_date: str
+    lien_clause_ok: bool = True
+    doc_hash: Optional[str] = None
+
+
+class FDRUpdateRequest(BaseModel):
+    receipt_no: Optional[str] = None
+    bank: Optional[str] = None
+    branch: Optional[str] = None
+    ifsc: Optional[str] = None
+    principal: Optional[float] = None
+    issue_date: Optional[str] = None
+    maturity_date: Optional[str] = None
+    lien_clause_ok: Optional[bool] = None
+
+
+class FDRSubmitRequest(BaseModel):
+    notes: Optional[str] = ""
+
+
+class FDRCheckerReviewRequest(BaseModel):
+    action: str  # approve | return
+    remarks: str
+
+
+class FDRROReviewRequest(BaseModel):
+    action: str  # approve | reject | clarify
+    remarks: str
+
+
+class FDRBankVerifyRequest(BaseModel):
+    action: str  # confirm | flag_mismatch
+    bank_value: Optional[str] = None
+    notes: Optional[str] = ""
+

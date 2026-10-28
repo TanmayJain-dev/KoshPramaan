@@ -37,7 +37,7 @@ def test_seed_integrity(setup_db):
     hero = db.query(Institution).filter(Institution.id == "INST-001").first()
     assert hero is not None
     assert hero.name == "Apex Institute of Technology"
-    assert len(hero.fdrs) == 3
+    assert len(hero.fdrs) == 4
 
     # FDR 1: Clean
     fdr1 = db.query(FDR).filter(FDR.id == "FDR-APEX-001").first()
@@ -194,7 +194,7 @@ def test_api_routers_direct(setup_db):
 
     # 5. FDRs Router
     fdrs = list_fdrs(x_user_role="SCRUTINY_OFFICER", db=db)
-    assert len(fdrs) == 5
+    assert len(fdrs) == 6
 
     # Officer sees duplicate summary
     dup_summary = get_duplicate_summary(x_user_role="SCRUTINY_OFFICER", db=db)

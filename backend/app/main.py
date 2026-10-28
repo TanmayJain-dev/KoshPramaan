@@ -11,6 +11,7 @@ from .routers import (
     institutions_router,
     fdrs_router,
     demo_router,
+    auth_router,
 )
 
 
@@ -53,6 +54,7 @@ for prefix in ["", "/api"]:
     app.include_router(institutions_router.router, prefix=prefix)
     app.include_router(fdrs_router.router, prefix=prefix)
     app.include_router(demo_router.router, prefix=prefix)
+    app.include_router(auth_router.router, prefix=prefix)
 
 
 @app.get("/health")
