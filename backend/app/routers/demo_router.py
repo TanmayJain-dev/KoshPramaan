@@ -5,7 +5,7 @@ from ..seed import seed_database
 from ..clock import clock
 from ..audit import verify_chain
 from ..models import Institution, FDR, Verifier, User
-from ..auth import require_roles
+from ..auth import require_roles, get_current_user
 from ..adapters import mock_bank, mock_grievance, mock_vigilance, mock_esign
 
 router = APIRouter(prefix="/demo", tags=["Demo"])
@@ -16,19 +16,17 @@ def reset_demo_state(
     current_user: User = Depends(require_roles(["AICTE_ADMIN"])),
     db: Session = Depends(get_db),
 ):
-    """Resets entire database to the deterministic Day 0 seed baseline."""
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role != "AICTE_ADMIN":
+    if current_user.role != "AICTE_ADMIN":
         raise HTTPException(status_code=403, detail="Access denied: AICTE HQ Admin required to reset demo state.")
-
     result = seed_database(db)
     return result
 
 
 @router.get("/status")
-def get_demo_status(db: Session = Depends(get_db)):
+def get_demo_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Returns portal health, clock, audit chain status, and mocked adapter connections."""
     clock_st = clock.get_state(db)
     audit_st = verify_chain(db)

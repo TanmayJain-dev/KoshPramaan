@@ -11,7 +11,10 @@ router = APIRouter(prefix="/clock", tags=["Clock"])
 
 
 @router.get("", response_model=ClockResponse)
-def get_clock(db: Session = Depends(get_db)):
+def get_clock(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     state = clock.get_state(db)
     return ClockResponse(**state)
 
@@ -22,17 +25,14 @@ def advance_clock(
     current_user: User = Depends(require_roles(["AICTE_ADMIN"])),
     db: Session = Depends(get_db),
 ):
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role != "AICTE_ADMIN":
+    if current_user.role != "AICTE_ADMIN":
         raise HTTPException(status_code=403, detail="Access denied: AICTE HQ Admin required to advance clock.")
 
     result = clock.advance(db, req.days)
     record_event(
         db=db,
-        actor=current_user.username if current_user else "admin",
-        role=current_user.role if current_user else "AICTE_ADMIN",
+        actor=current_user.username,
+        role=current_user.role,
         action="CLOCK_ADVANCE",
         payload={
             "days_advanced": req.days,
@@ -49,18 +49,14 @@ def reset_clock(
     current_user: User = Depends(require_roles(["AICTE_ADMIN"])),
     db: Session = Depends(get_db),
 ):
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role != "AICTE_ADMIN":
+    if current_user.role != "AICTE_ADMIN":
         raise HTTPException(status_code=403, detail="Access denied: AICTE HQ Admin required to reset clock.")
-
 
     result = clock.reset(db)
     record_event(
         db=db,
-        actor=current_user.username if current_user else "admin",
-        role=current_user.role if current_user else "AICTE_ADMIN",
+        actor=current_user.username,
+        role=current_user.role,
         action="CLOCK_RESET",
         payload={"message": "Clock reset to baseline Day 0"},
         ts_sim=result["current_time_iso"],

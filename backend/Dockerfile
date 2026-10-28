@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 WORKDIR /app
 COPY pyproject.toml README.md ./
 RUN pip install --no-cache-dir uvicorn fastapi sqlalchemy pydantic pydantic-settings python-multipart pyjwt itsdangerous qrcode pillow pytest httpx

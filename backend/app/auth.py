@@ -7,9 +7,19 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 
-JWT_SECRET = os.getenv("JWT_SECRET", "koshpramaan-sih-2026-secret-key-salt")
+_DEFAULT_JWT_SECRET = "koshpramaan-sih-2026-secret-key-salt"
+if "JWT_SECRET" not in os.environ or not os.environ["JWT_SECRET"]:
+    print("\n" + "=" * 78)
+    print("⚠️  [SECURITY WARNING] JWT_SECRET environment variable is unset!")
+    print("⚠️  Using insecure demo default secret key: 'koshpramaan-sih-2026-secret-key-salt'")
+    print("⚠️  DO NOT USE IN PRODUCTION! Set JWT_SECRET in production deployment.")
+    print("=" * 78 + "\n")
+    JWT_SECRET = _DEFAULT_JWT_SECRET
+else:
+    JWT_SECRET = os.environ["JWT_SECRET"]
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "24"))
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -29,53 +39,42 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
 
 def get_current_user(
     authorization: Optional[str] = Header(None, alias="Authorization"),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
-    x_institution_id: Optional[str] = Header(None, alias="X-Institution-Id"),
-    x_user_actor: Optional[str] = Header(None, alias="X-User-Actor"),
     db: Session = Depends(get_db),
 ) -> User:
-    # 1. Bearer Token Authentication
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split("Bearer ", 1)[1].strip()
-        payload = decode_access_token(token)
-        if payload and "user_id" in payload:
-            user = db.query(User).filter(User.id == payload["user_id"]).first()
-            if user:
-                return user
+    """Strict JWT-only authentication dependency. Rejects any missing, forged, or header-bypass requests."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials not provided. Valid Bearer token required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    # 2. Seamless Header Fallback (for testing / backward compatibility)
-    if x_user_role:
-        normalized_role = x_user_role.upper()
-        # Map legacy roles if passed
-        role_map = {
-            "INSTITUTION": "INSTITUTION_MAKER",
-            "SCRUTINY_OFFICER": "SCRUTINY_OFFICER",
-            "ASSISTANT_DIRECTOR": "INSTITUTION_CHECKER",
-            "REGIONAL_OFFICER": "REGIONAL_OFFICER",
-            "SYSTEM": "AICTE_ADMIN",
-            "ADMIN": "AICTE_ADMIN",
-        }
-        target_role = role_map.get(normalized_role, normalized_role)
+    token = authorization.split("Bearer ", 1)[1].strip()
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired authentication token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-        query = db.query(User).filter(User.role == target_role)
-        if x_institution_id and target_role in ["INSTITUTION_MAKER", "INSTITUTION_CHECKER"]:
-            query = query.filter(User.institution_id == x_institution_id)
-        
-        user = query.first()
-        if user:
-            return user
-        
-        # If user not found in DB, search by first user of role
-        fallback_user = db.query(User).filter(User.role == target_role).first()
-        if fallback_user:
-            return fallback_user
+    user_id = payload.get("user_id") or payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Malformed token payload.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    # 3. Default to AICTE_ADMIN or raise 401 if unauthenticated
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication credentials not provided. Please log in or provide Bearer token.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    user = db.query(User).filter((User.id == user_id) | (User.username == user_id)).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User associated with token does not exist.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
 
 
 def require_roles(allowed_roles: List[str]):

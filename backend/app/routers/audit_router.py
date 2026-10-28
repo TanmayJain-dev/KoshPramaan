@@ -16,12 +16,8 @@ def get_audit_verify(
     current_user: User = Depends(require_roles(["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"])),
     db: Session = Depends(get_db),
 ):
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
+    if current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
         raise HTTPException(status_code=403, detail="Access denied: Audit ledger is restricted to Officers and AICTE Admin.")
-
     result = verify_chain(db)
     return AuditVerifyResponse(**result)
 
@@ -32,12 +28,8 @@ def list_events(
     current_user: User = Depends(require_roles(["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"])),
     db: Session = Depends(get_db),
 ):
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
+    if current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
         raise HTTPException(status_code=403, detail="Access denied: Event history is restricted to Officers and AICTE Admin.")
-
     events = db.query(Event).order_by(Event.id.desc()).limit(limit).all()
     out = []
     for e in events:
@@ -67,12 +59,8 @@ def simulate_tampering(
     db: Session = Depends(get_db),
 ):
     """Simulates unauthorized database tampering by mutating the payload of an event without recalculating hashes."""
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role != "AICTE_ADMIN":
+    if current_user.role != "AICTE_ADMIN":
         raise HTTPException(status_code=403, detail="Access denied: AICTE HQ Admin required for tamper demo simulation.")
-
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")

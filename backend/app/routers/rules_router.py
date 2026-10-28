@@ -15,12 +15,8 @@ def list_rules(
     current_user: User = Depends(require_roles(["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"])),
     db: Session = Depends(get_db),
 ):
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
+    if current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
         raise HTTPException(status_code=403, detail="Access denied: Rules are restricted to Officers and AICTE Admin.")
-
     rules = db.query(Rule).all()
     out = []
     for r in rules:
@@ -45,12 +41,8 @@ def get_rule(
     current_user: User = Depends(require_roles(["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"])),
     db: Session = Depends(get_db),
 ):
-    if not isinstance(current_user, User):
-        current_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
-
-    if not current_user or current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
+    if current_user.role not in ["AICTE_ADMIN", "SCRUTINY_OFFICER", "REGIONAL_OFFICER"]:
         raise HTTPException(status_code=403, detail="Access denied: Rules are restricted to Officers and AICTE Admin.")
-
     r = db.query(Rule).filter(Rule.key == key).first()
     if not r:
         raise HTTPException(status_code=404, detail="Rule key not found")

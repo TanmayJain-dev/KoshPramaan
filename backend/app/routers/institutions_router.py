@@ -107,20 +107,8 @@ def build_institution_out(inst: Institution, db: Session, current_user: Optional
 def list_institutions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
-    x_institution_id: Optional[str] = Header(None, alias="X-Institution-Id"),
 ):
     """Lists institutions strictly scoped by the user's role and geographic/organizational boundary."""
-    if not isinstance(current_user, User):
-        role = x_user_role or "AICTE_ADMIN"
-        if role == "INSTITUTION":
-            target_inst = x_institution_id or "INST-001"
-            current_user = db.query(User).filter(User.role == "INSTITUTION_MAKER", User.institution_id == target_inst).first()
-        else:
-            current_user = db.query(User).filter(User.role == role).first()
-        if not current_user:
-            current_user = db.query(User).first()
-
     query = db.query(Institution)
 
     # 1. Institution Maker & Checker: strictly own institution
@@ -152,13 +140,7 @@ def get_institution(
     id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
 ):
-    """Retrieves single institution detail, enforcing strict organizational/regional access isolation."""
-    if not isinstance(current_user, User):
-        role = x_user_role or "AICTE_ADMIN"
-        current_user = db.query(User).filter(User.role == role).first() or db.query(User).first()
-
     """Retrieves single institution detail, enforcing strict organizational/regional access isolation."""
     inst = db.query(Institution).filter(Institution.id == id).first()
     if not inst:

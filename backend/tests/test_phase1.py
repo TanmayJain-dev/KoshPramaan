@@ -1,10 +1,15 @@
+from datetime import timedelta
 import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from app.main import app
 from app.database import Base, engine, SessionLocal
 from app.seed import seed_database
 from app.clock import clock
 from app.audit import record_event, verify_chain
 from app.adapters import mock_bank, mock_grievance, mock_vigilance, mock_esign
-from app.models import FDR, Institution, Liability, Verifier, Event
+from app.models import FDR, Institution, Liability, Verifier, Event, User
+from app.auth import create_access_token
 from app.schemas import ClockAdvanceRequest
 from app.routers.clock_router import get_clock, advance_clock, reset_clock
 from app.routers.audit_router import get_audit_verify, list_events
@@ -12,7 +17,6 @@ from app.routers.rules_router import list_rules, get_rule
 from app.routers.institutions_router import list_institutions, get_institution
 from app.routers.fdrs_router import list_fdrs, get_fdr, get_duplicate_summary
 from app.routers.demo_router import reset_demo_state, get_demo_status
-from fastapi import HTTPException
 
 
 @pytest.fixture(autouse=True)
@@ -155,61 +159,119 @@ def test_mock_bank_behavior():
 def test_api_routers_direct(setup_db):
     db = setup_db
 
+    admin_user = db.query(User).filter(User.role == "AICTE_ADMIN").first()
+    scrutiny_user = db.query(User).filter(User.role == "SCRUTINY_OFFICER").first()
+    maker_user = db.query(User).filter(User.role == "INSTITUTION_MAKER", User.institution_id == "INST-001").first()
+
     # 1. Clock Router
-    c = get_clock(db=db)
+    c = get_clock(current_user=admin_user, db=db)
     assert c.days_elapsed == 0
 
-    c_adv = advance_clock(req=ClockAdvanceRequest(days=15), db=db)
+    c_adv = advance_clock(req=ClockAdvanceRequest(days=15), current_user=admin_user, db=db)
     assert c_adv.days_elapsed == 15
 
-    c_reset = reset_clock(db=db)
+    c_reset = reset_clock(current_user=admin_user, db=db)
     assert c_reset.days_elapsed == 0
 
     # 2. Audit Router
-    audit_res = get_audit_verify(db=db)
+    audit_res = get_audit_verify(current_user=admin_user, db=db)
     assert audit_res.valid is True
-    events = list_events(limit=10, db=db)
+    events = list_events(limit=10, current_user=admin_user, db=db)
     assert len(events) >= 2
 
     # 3. Rules Router
-    rules = list_rules(db=db)
+    rules = list_rules(current_user=admin_user, db=db)
     assert len(rules) >= 4
     rule_keys = [r.key for r in rules]
     assert "proof_score_parameters" in rule_keys
     assert "protection_gap_factors" in rule_keys
 
-    rule_param = get_rule(key="proof_score_parameters", db=db)
+    rule_param = get_rule(key="proof_score_parameters", current_user=admin_user, db=db)
     assert "half_life_days" in rule_param.value
 
     # 4. Institutions Router
-    institutions = list_institutions(x_user_role="SCRUTINY_OFFICER", db=db)
+    institutions = list_institutions(current_user=scrutiny_user, db=db)
     assert len(institutions) == 3
 
     # Institution role sees only own institution if requested
-    inst_filtered = list_institutions(x_user_role="INSTITUTION", x_institution_id="INST-001", db=db)
+    inst_filtered = list_institutions(current_user=maker_user, db=db)
     assert len(inst_filtered) == 1
     assert inst_filtered[0].id == "INST-001"
     # Institution role does NOT see cross-institution duplicate warnings
     assert all(f.duplicate_count == 0 for f in inst_filtered[0].fdrs)
 
     # 5. FDRs Router
-    fdrs = list_fdrs(x_user_role="SCRUTINY_OFFICER", db=db)
+    fdrs = list_fdrs(current_user=scrutiny_user, db=db)
     assert len(fdrs) == 6
 
     # Officer sees duplicate summary
-    dup_summary = get_duplicate_summary(x_user_role="SCRUTINY_OFFICER", db=db)
+    dup_summary = get_duplicate_summary(current_user=scrutiny_user, db=db)
     assert dup_summary["total_duplicates_found"] >= 1
 
     # Institution role forbidden from duplicate summary
     with pytest.raises(HTTPException) as exc_info:
-        get_duplicate_summary(x_user_role="INSTITUTION", db=db)
+        get_duplicate_summary(current_user=maker_user, db=db)
     assert exc_info.value.status_code == 403
 
     # 6. Demo Status & Reset
-    status = get_demo_status(db=db)
+    status = get_demo_status(current_user=admin_user, db=db)
     assert status["system"] == "KoshPramaan (कोष-प्रमाण)"
     assert status["honesty_badge"] == "Demo data, mocked integrations"
     assert status["counts"]["institutions"] == 3
 
-    reset_res = reset_demo_state(db=db)
+    reset_res = reset_demo_state(current_user=admin_user, db=db)
     assert reset_res["status"] == "success"
+
+
+def test_auth_rejection_on_x_user_role_only(setup_db):
+    """Asserts that requests with only X-User-Role and NO Bearer token are strictly rejected with 401 on every protected endpoint."""
+    client = TestClient(app)
+    protected_endpoints = [
+        ("GET", "/api/clock"),
+        ("POST", "/api/clock/advance", {"days": 10}),
+        ("POST", "/api/clock/reset", None),
+        ("GET", "/api/audit/verify"),
+        ("GET", "/api/audit/events"),
+        ("POST", "/api/audit/tamper-demo?event_id=1", None),
+        ("GET", "/api/rules"),
+        ("GET", "/api/rules/proof_score_parameters"),
+        ("GET", "/api/institutions"),
+        ("GET", "/api/institutions/INST-001"),
+        ("GET", "/api/fdrs"),
+        ("GET", "/api/fdrs/duplicates/summary"),
+        ("GET", "/api/fdrs/watchlist/decay"),
+        ("GET", "/api/fdrs/FDR-APEX-001"),
+        ("POST", "/api/demo/reset", None),
+        ("GET", "/api/demo/status"),
+    ]
+
+    for method, path, *payload in protected_endpoints:
+        headers = {"X-User-Role": "AICTE_ADMIN"}
+        if method == "GET":
+            res = client.get(path, headers=headers)
+        else:
+            json_data = payload[0] if payload else None
+            res = client.post(path, json=json_data, headers=headers)
+        assert res.status_code == 401, f"{method} {path} with X-User-Role bypass should return 401, got {res.status_code}"
+
+
+def test_auth_rejection_on_expired_and_tampered_token(setup_db):
+    """Asserts that expired or tampered JWTs return 401 Unauthorized."""
+    client = TestClient(app)
+
+    # 1. Expired token
+    expired_token = create_access_token(
+        data={"sub": "aicte_admin", "role": "AICTE_ADMIN"},
+        expires_delta=timedelta(hours=-1),
+    )
+    res_exp = client.get("/api/demo/status", headers={"Authorization": f"Bearer {expired_token}"})
+    assert res_exp.status_code == 401
+    assert "Invalid or expired authentication token" in res_exp.json()["detail"]
+
+    # 2. Tampered token
+    valid_token = create_access_token(data={"sub": "aicte_admin", "role": "AICTE_ADMIN"})
+    tampered_token = valid_token + "malicious_tamper"
+    res_tamp = client.get("/api/demo/status", headers={"Authorization": f"Bearer {tampered_token}"})
+    assert res_tamp.status_code == 401
+    assert "Invalid or expired authentication token" in res_tamp.json()["detail"]
+

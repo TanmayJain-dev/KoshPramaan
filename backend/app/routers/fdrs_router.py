@@ -19,6 +19,7 @@ from ..schemas import (
 from ..auth import get_current_user, require_roles
 from ..clock import clock
 from ..audit import record_event
+from ..adapters import mock_bank
 
 router = APIRouter(prefix="/fdrs", tags=["FDRs"])
 
@@ -30,6 +31,11 @@ def compute_fdr_fingerprint(receipt_no: str, bank: str, branch: str) -> str:
 
 def compute_fdr_proof_score(fdr: FDR, db: Session, days_elapsed: int) -> float:
     """Calculates dynamically decaying proof score from rules table."""
+    # Check if mock bank reports early liquidation
+    bank_query = mock_bank.query_fdr(fdr.id, fdr.receipt_no, fdr.bank, fdr.branch, days_elapsed)
+    if bank_query.get("status") == "closed_early":
+        return 0.0
+
     rule_record = db.query(Rule).filter(Rule.key == "proof_score_parameters").first()
     half_life = 180
     penalties_config = {"open_mismatch": 40.0, "missed_canary": 30.0}
@@ -67,6 +73,13 @@ def compute_fdr_proof_score(fdr: FDR, db: Session, days_elapsed: int) -> float:
 
 
 def build_fdr_out(fdr: FDR, db: Session, current_user: Optional[User] = None) -> FDROut:
+    clock_state = clock.get_state(db)
+    days_elapsed = clock_state.get("days_elapsed", 0)
+
+    # Check dynamic early closure from bank adapter
+    bank_query = mock_bank.query_fdr(fdr.id, fdr.receipt_no, fdr.bank, fdr.branch, days_elapsed)
+    effective_status = bank_query.get("status") if bank_query.get("status") == "closed_early" else fdr.status
+
     dup_count = (
         db.query(FDR)
         .filter(FDR.fingerprint == fdr.fingerprint, FDR.institution_id != fdr.institution_id)
@@ -78,10 +91,8 @@ def build_fdr_out(fdr: FDR, db: Session, current_user: Optional[User] = None) ->
     user_role = current_user.role if current_user else "AICTE_ADMIN"
     is_institution_role = user_role in ["INSTITUTION_MAKER", "INSTITUTION_CHECKER", "INSTITUTION"]
 
-    clock_state = clock.get_state(db)
-    days_elapsed = clock_state.get("days_elapsed", 0)
     proof_score = compute_fdr_proof_score(fdr, db, days_elapsed)
-    decay_risk = proof_score < 60.0
+    decay_risk = (proof_score < 60.0) or (effective_status == "closed_early")
 
     claims = [
         FieldClaimOut(
@@ -109,7 +120,9 @@ def build_fdr_out(fdr: FDR, db: Session, current_user: Optional[User] = None) ->
         issue_date=fdr.issue_date,
         maturity_date=fdr.maturity_date,
         lien_clause_ok=fdr.lien_clause_ok,
-        status=fdr.status,
+        status=effective_status,
+        proof_score=proof_score,
+        decay_risk=decay_risk,
         fingerprint=fdr.fingerprint,
         doc_hash=fdr.doc_hash,
         field_claims=claims,
@@ -124,8 +137,6 @@ def build_fdr_out(fdr: FDR, db: Session, current_user: Optional[User] = None) ->
         submitted_at=getattr(fdr, "submitted_at", None),
         checked_at=getattr(fdr, "checked_at", None),
         ro_action_at=getattr(fdr, "ro_action_at", None),
-        proof_score=proof_score,
-        decay_risk=decay_risk,
     )
 
 
@@ -134,20 +145,8 @@ def list_fdrs(
     institution_id: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
-    x_institution_id: Optional[str] = Header(None, alias="X-Institution-Id"),
 ):
     """Lists FDRs strictly isolated within the user's role scope (institution, region, or bank)."""
-    if not isinstance(current_user, User):
-        role = x_user_role or "AICTE_ADMIN"
-        if role == "INSTITUTION":
-            target_inst = x_institution_id or institution_id or "INST-001"
-            current_user = db.query(User).filter(User.role == "INSTITUTION_MAKER", User.institution_id == target_inst).first()
-        else:
-            current_user = db.query(User).filter(User.role == role).first()
-        if not current_user:
-            current_user = db.query(User).first()
-
     query = db.query(FDR)
 
     # 1. Institution Maker & Checker: strictly own institution
@@ -224,21 +223,13 @@ def get_decay_watchlist(
 def get_duplicate_summary(
     current_user: User = Depends(require_roles(["SCRUTINY_OFFICER", "AICTE_ADMIN"])),
     db: Session = Depends(get_db),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
 ):
     """Confidential cross-institution duplicate fingerprint detector (Scrutiny/Vigilance Officer only)."""
-    if not isinstance(current_user, User):
-        role = x_user_role or "SCRUTINY_OFFICER"
-        if role in ["INSTITUTION", "INSTITUTION_MAKER", "INSTITUTION_CHECKER"]:
-            raise HTTPException(status_code=403, detail="Institutions are not authorized to view cross-institution alerts.")
-        current_user = db.query(User).filter(User.role == role).first() or db.query(User).first()
-
-    if not current_user or current_user.role not in ["SCRUTINY_OFFICER", "AICTE_ADMIN"]:
+    if current_user.role not in ["SCRUTINY_OFFICER", "AICTE_ADMIN"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: confidential cross-institution vigilance alerts are restricted to Scrutiny Officers and AICTE Admin.",
         )
-
     fdrs = db.query(FDR).all()
     fp_map = {}
     for f in fdrs:
@@ -248,7 +239,7 @@ def get_duplicate_summary(
     for fp, items in fp_map.items():
         if len(items) > 1:
             inst_ids = list({f.institution_id for f in items})
-            # Multi-institution collusion risk
+            # Multi-institution possible duplicate risk signal
             if len(inst_ids) > 1:
                 institutions = db.query(Institution).filter(Institution.id.in_(inst_ids)).all()
                 inst_lookup = {i.id: i.name for i in institutions}
@@ -258,9 +249,9 @@ def get_duplicate_summary(
                     "fingerprint": fp,
                     "duplicate_count": len(items),
                     "distinct_institutions_count": len(inst_ids),
-                    "severity": "CRITICAL_COLLUSION_RISK",
+                    "severity": "POSSIBLE_DUPLICATE_RISK_SIGNAL",
                     "signal_type": "CROSS_INSTITUTION_DUPLICATE_FINGERPRINT",
-                    "signal_notice": "Signals, not verdicts: Scrutiny officer investigation required before adverse action.",
+                    "signal_notice": "Risk signal, needs officer review: Automated systems produce evidentiary signals, not verdicts. Scrutiny officer investigation required before any regulatory action.",
                     "institutions_involved": [
                         {
                             "institution_id": f.institution_id,
@@ -289,13 +280,7 @@ def get_fdr(
     id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
 ):
-    """Retrieves single FDR with access isolation enforcement."""
-    if not isinstance(current_user, User):
-        role = x_user_role or "AICTE_ADMIN"
-        current_user = db.query(User).filter(User.role == role).first() or db.query(User).first()
-
     """Retrieves single FDR with access isolation enforcement."""
     fdr = db.query(FDR).filter(FDR.id == id).first()
     if not fdr:
@@ -506,7 +491,7 @@ def checker_review_fdr(
     # STRICT MAKER != CHECKER ENFORCEMENT
     if fdr.created_by == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Maker-Checker Segregation Violation: As the Maker who created this claim, you cannot approve it. An independent Checker must verify.",
         )
 
