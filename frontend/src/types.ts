@@ -1,8 +1,53 @@
-export type UserRole = 
-  | 'INSTITUTION' 
-  | 'SCRUTINY_OFFICER' 
-  | 'ASSISTANT_DIRECTOR' 
-  | 'REGIONAL_OFFICER';
+export type UserRole =
+  | 'INSTITUTION_MAKER'
+  | 'INSTITUTION_CHECKER'
+  | 'REGIONAL_OFFICER'
+  | 'SCRUTINY_OFFICER'
+  | 'BANK_VERIFIER'
+  | 'AICTE_ADMIN';
+
+export type WorkflowStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'CHECKER_APPROVED'
+  | 'RO_APPROVED'
+  | 'RO_REJECTED'
+  | 'CLARIFICATION_REQUESTED'
+  | 'RETURNED_TO_MAKER';
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  institution_id?: string | null;
+  institution_name?: string | null;
+  region?: string | null;
+  bank?: string | null;
+  verifier_id?: string | null;
+  name: string;
+  email: string;
+}
+
+export interface DemoUser {
+  id: string;
+  username: string;
+  role: UserRole;
+  institution_id?: string | null;
+  institution_name?: string | null;
+  region?: string | null;
+  bank?: string | null;
+  verifier_id?: string | null;
+  name: string;
+  email: string;
+  persona_title: string;
+  persona_description: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
 
 export interface ClockState {
   current_time_iso: string;
@@ -10,7 +55,6 @@ export interface ClockState {
   base_time_iso: string;
   advanced_by?: number;
 }
-
 
 export interface AuditVerify {
   valid: boolean;
@@ -60,6 +104,16 @@ export interface FDR {
   maturity_date: string;
   lien_clause_ok: boolean;
   status: 'active' | 'closed_early' | 'matured' | 'discrepancy_locked' | 'returned_for_correction' | 'duplicate_flagged';
+  workflow_status: WorkflowStatus;
+  created_by?: string | null;
+  checked_by?: string | null;
+  checker_remarks?: string | null;
+  ro_by?: string | null;
+  ro_remarks?: string | null;
+  submitted_at?: string | null;
+  checked_at?: string | null;
+  ro_action_at?: string | null;
+  proof_score?: number | null;
   fingerprint: string;
   doc_hash: string | null;
   field_claims: FieldClaim[];
@@ -107,6 +161,8 @@ export interface DemoStatus {
     institutions: number;
     fdrs: number;
     verifiers: number;
+    users?: number;
+    liabilities?: number;
   };
   adapters: {
     bank: Record<string, any>;
@@ -114,4 +170,44 @@ export interface DemoStatus {
     vigilance: Record<string, any>;
     esign: Record<string, any>;
   };
+}
+
+export interface FDRCreateData {
+  receipt_no: string;
+  bank: string;
+  branch: string;
+  ifsc: string;
+  principal: number;
+  issue_date: string;
+  maturity_date: string;
+  lien_clause_ok: boolean;
+  doc_hash?: string;
+}
+
+export interface DuplicateInstitution {
+  institution_id: string;
+  institution_name: string;
+  region: string;
+  fdr_id: string;
+  receipt_no: string;
+  bank: string;
+  branch: string;
+  principal: number;
+  workflow_status: string;
+}
+
+export interface DuplicateCluster {
+  fingerprint: string;
+  duplicate_count: number;
+  distinct_institutions_count: number;
+  severity: string;
+  signal_type: string;
+  signal_notice: string;
+  institutions_involved: DuplicateInstitution[];
+}
+
+export interface DuplicateSummary {
+  total_duplicates_found: number;
+  status: string;
+  duplicates: DuplicateCluster[];
 }

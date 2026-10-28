@@ -194,7 +194,7 @@ export const InstitutionsRegistry: React.FC<InstitutionsRegistryProps> = ({ inst
           )}
 
           {/* Cross-Institution Duplicate Alert (Officer view only) */}
-          {role !== 'INSTITUTION' && activeInstitution.fdrs.some(f => f.duplicate_count > 0) && (
+          {role !== 'INSTITUTION_MAKER' && role !== 'INSTITUTION_CHECKER' && activeInstitution.fdrs.some(f => f.duplicate_count > 0) && (
             <div className="bg-red-950/40 border border-red-800 rounded-xl p-4 flex items-start space-x-3.5">
               <BadgeAlert className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
               <div>
@@ -251,7 +251,7 @@ export const InstitutionsRegistry: React.FC<InstitutionsRegistryProps> = ({ inst
                         <td className="py-3.5 px-4">
                           <div className="font-bold text-slate-100">{fdr.id}</div>
                           <div className="text-[11px] font-mono text-slate-400">{fdr.receipt_no}</div>
-                          {role !== 'INSTITUTION' && fdr.duplicate_count > 0 && (
+                          {role !== 'INSTITUTION_MAKER' && role !== 'INSTITUTION_CHECKER' && fdr.duplicate_count > 0 && (
                             <div className="text-[10px] text-amber-400 font-bold mt-0.5 flex items-center">
                               <Copy className="h-2.5 w-2.5 mr-1" /> Duplicate Fingerprint ({fdr.duplicate_count})
                             </div>

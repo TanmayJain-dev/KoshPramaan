@@ -1,26 +1,21 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRole } from './context/RoleContext';
+import { useAuth } from './context/AuthContext';
 import { apiClient } from './api';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { AuditChainStatus } from './components/AuditChainStatus';
-import { InstitutionsRegistry } from './components/InstitutionsRegistry';
-import { RulesRegistry } from './components/RulesRegistry';
-import { AdaptersStatus } from './components/AdaptersStatus';
-import { 
-  ShieldCheck, 
-  Layers, 
-  RotateCcw, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  ArrowRight,
-  Database
-} from 'lucide-react';
+import { RoleSwitcherModal } from './components/RoleSwitcherModal';
+import { MakerDashboard } from './pages/MakerDashboard';
+import { CheckerDashboard } from './pages/CheckerDashboard';
+import { RegionalOfficerDashboard } from './pages/RegionalOfficerDashboard';
+import { ScrutinyDashboard } from './pages/ScrutinyDashboard';
+import { BankVerifierDashboard } from './pages/BankVerifierDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { LoginPage } from './pages/LoginPage';
+import { CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { role, institutionId, roleDisplayName } = useRole();
+  const { user, role, isLoading: isAuthLoading, switchPersonaModalOpen, setSwitchPersonaModalOpen } = useAuth();
   const queryClient = useQueryClient();
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -29,78 +24,82 @@ export const App: React.FC = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // Queries
+  // Global Clock Query
   const { data: clockState, isLoading: isClockLoading } = useQuery({
-    queryKey: ['clock', role],
-    queryFn: () => apiClient.getClock(role),
+    queryKey: ['clock'],
+    queryFn: () => apiClient.getClock(),
   });
 
-  const { data: auditState, isLoading: isAuditLoading, refetch: refetchAudit } = useQuery({
-    queryKey: ['audit-verify', role],
-    queryFn: () => apiClient.verifyAudit(role),
+  // Global Audit Query
+  const { data: auditState } = useQuery({
+    queryKey: ['audit-verify'],
+    queryFn: () => apiClient.verifyAudit(),
   });
 
-  const { data: auditEvents = [] } = useQuery({
-    queryKey: ['audit-events', role],
-    queryFn: () => apiClient.getEvents(20, role),
-  });
-
-  const { data: institutions = [], isLoading: isInstLoading } = useQuery({
-    queryKey: ['institutions', role, institutionId],
-    queryFn: () => apiClient.getInstitutions(role, institutionId),
-  });
-
-  const { data: rules = [] } = useQuery({
-    queryKey: ['rules', role],
-    queryFn: () => apiClient.getRules(role),
-  });
-
-  const { data: demoStatus } = useQuery({
-    queryKey: ['demo-status', role],
-    queryFn: () => apiClient.getDemoStatus(role),
-  });
-
-  // Mutations
+  // Clock Advance Mutation (Admin only)
   const advanceClockMutation = useMutation({
-    mutationFn: (days: number) => apiClient.advanceClock(days, role),
+    mutationFn: (days: number) => apiClient.advanceClock(days),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['clock'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-verify'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-events'] });
+      queryClient.invalidateQueries();
       showToast(`Clock advanced by ${data.advanced_by} days. Current simulated date: ${new Date(data.current_time_iso).toLocaleDateString('en-IN')}`, 'success');
     },
     onError: (err: any) => showToast(err.message, 'error'),
   });
 
+  // Clock Reset Mutation
   const resetClockMutation = useMutation({
-    mutationFn: () => apiClient.resetClock(role),
+    mutationFn: () => apiClient.resetClock(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clock'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-verify'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-events'] });
+      queryClient.invalidateQueries();
       showToast('Simulated clock reset back to Day 0 baseline (2026-04-01).', 'info');
     },
     onError: (err: any) => showToast(err.message, 'error'),
   });
 
-  const simulateTamperMutation = useMutation({
-    mutationFn: (eventId: number) => apiClient.simulateTamper(eventId, role),
+  // Demo Reset Mutation
+  const resetDemoMutation = useMutation({
+    mutationFn: () => apiClient.resetDemo(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['audit-verify'] });
-      queryClient.invalidateQueries({ queryKey: ['audit-events'] });
-      showToast('Simulated malicious tamper in database! Cryptographic hash chain broken at Event #1.', 'error');
+      queryClient.invalidateQueries();
+      showToast('Demo data completely re-seeded to deterministic Day 0 baseline.', 'success');
     },
     onError: (err: any) => showToast(err.message, 'error'),
   });
 
-  const resetDemoMutation = useMutation({
-    mutationFn: () => apiClient.resetDemo(role),
-    onSuccess: () => {
-      queryClient.invalidateQueries();
-      showToast('Demo data completely re-seeded to deterministic baseline.', 'success');
-    },
-    onError: (err: any) => showToast(err.message, 'error'),
-  });
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-teal-400 font-mono text-sm">
+        <div className="flex items-center space-x-3">
+          <div className="w-5 h-5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+          <span>Loading KoshPramaan Workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onSuccess={() => queryClient.invalidateQueries()} />;
+  }
+
+  // Render role-specific workspace
+  const renderDashboard = () => {
+    switch (role) {
+      case 'INSTITUTION_MAKER':
+        return <MakerDashboard />;
+      case 'INSTITUTION_CHECKER':
+        return <CheckerDashboard />;
+      case 'REGIONAL_OFFICER':
+        return <RegionalOfficerDashboard />;
+      case 'SCRUTINY_OFFICER':
+        return <ScrutinyDashboard />;
+      case 'BANK_VERIFIER':
+        return <BankVerifierDashboard />;
+      case 'AICTE_ADMIN':
+        return <AdminDashboard />;
+      default:
+        return <MakerDashboard />;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
@@ -133,71 +132,16 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        {/* Phase 1 Foundations Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border border-slate-800 p-6 shadow-2xl">
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-900/70 text-teal-300 border border-teal-700">
-                  Phase 1: Foundations
-                </span>
-                <span className="text-xs font-medium text-slate-400">
-                  Active Role: <strong className="text-slate-200">{roleDisplayName}</strong>
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-2 tracking-tight">
-                Living Proof Object Architecture
-              </h1>
-              <p className="text-sm text-slate-300 mt-1 max-w-2xl">
-                A scanned FDR is a claim, not a proof. KoshPramaan models every security deposit as a living object verified across the three-phase loop: <span className="text-teal-400 font-bold">PROVE</span> → <span className="text-blue-400 font-bold">WATCH</span> → <span className="text-amber-400 font-bold">ACT</span>.
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-3 bg-slate-900/80 p-3 rounded-xl border border-slate-800 font-mono text-xs">
-              <Database className="h-4 w-4 text-teal-400" />
-              <div>
-                <div className="text-slate-400">Seeded Records</div>
-                <div className="font-bold text-slate-200">
-                  {institutions.length} Institutions • 5 FDRs • 3 Verifiers
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 1. Tamper-Evident SHA-256 Hash Chain Component */}
-        <AuditChainStatus
-          auditState={auditState || null}
-          events={auditEvents}
-          onVerify={() => {
-            refetchAudit();
-            showToast('Audit chain verification completed successfully.', 'success');
-          }}
-          onSimulateTamper={(id) => simulateTamperMutation.mutate(id)}
-          onRestore={() => resetDemoMutation.mutate()}
-          isLoading={isAuditLoading}
-        />
-
-        {/* 2. Institutions & Living FDRs Explorer */}
-        <InstitutionsRegistry
-          institutions={institutions}
-          role={role}
-        />
-
-        {/* 3. Versioned Rules Table */}
-        <RulesRegistry
-          rules={rules}
-        />
-
-        {/* 4. Mock Adapters Health */}
-        <AdaptersStatus
-          adapters={demoStatus?.adapters || {}}
-        />
-
+      {/* Main Workspace Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {renderDashboard()}
       </main>
+
+      {/* Role Switcher Modal (1-Click Switcher for Judges) */}
+      <RoleSwitcherModal
+        isOpen={switchPersonaModalOpen}
+        onClose={() => setSwitchPersonaModalOpen(false)}
+      />
 
       {/* Footer with Honesty Badge */}
       <Footer />
