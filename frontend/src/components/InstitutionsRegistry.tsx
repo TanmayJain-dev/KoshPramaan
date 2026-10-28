@@ -203,7 +203,7 @@ export const InstitutionsRegistry: React.FC<InstitutionsRegistryProps> = ({ inst
                     Cross-Institution Duplicate Fingerprint Alert (Officer Confidential)
                   </h4>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-red-900 text-red-200 font-mono font-semibold">
-                    Collusion Risk Signal
+                    Risk Signal, Needs Officer Review
                   </span>
                 </div>
                 <p className="text-xs text-red-200/90 mt-1">

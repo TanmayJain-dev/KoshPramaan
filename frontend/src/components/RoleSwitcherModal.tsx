@@ -105,7 +105,10 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, on
             return (
               <button
                 key={u.username}
-                onClick={() => loginAsUsername(u.username)}
+                onClick={async () => {
+                  await loginAsUsername(u.username);
+                  onClose();
+                }}
                 className={`text-left p-4 rounded-xl border transition flex flex-col justify-between space-y-3 relative ${
                   isCurrent
                     ? 'bg-blue-950/40 border-blue-500/80 ring-1 ring-blue-500/50 shadow-lg shadow-blue-950/40'

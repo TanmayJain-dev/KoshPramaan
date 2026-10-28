@@ -129,7 +129,7 @@ def test_maker_checker_segregation_and_workflow(setup_db):
             current_user=maker_as_checker,
             db=db,
         )
-    assert exc2.value.status_code == 400
+    assert exc2.value.status_code == 403
     assert "Segregation Violation" in exc2.value.detail
 
     # 4. Independent Checker approves
@@ -250,7 +250,7 @@ def test_scrutiny_officer_privileges(setup_db):
     # 1. Scrutiny officer views duplicate fingerprint detector
     dup_res = get_duplicate_summary(current_user=scrutiny, db=db)
     assert dup_res["total_duplicates_found"] >= 1
-    assert dup_res["duplicates"][0]["severity"] == "CRITICAL_COLLUSION_RISK"
+    assert dup_res["duplicates"][0]["severity"] == "POSSIBLE_DUPLICATE_RISK_SIGNAL"
     assert dup_res["duplicates"][0]["distinct_institutions_count"] == 2
 
     # 2. Institution Maker is blocked with 403

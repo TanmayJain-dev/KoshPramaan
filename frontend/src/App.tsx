@@ -28,12 +28,15 @@ export const App: React.FC = () => {
   const { data: clockState, isLoading: isClockLoading } = useQuery({
     queryKey: ['clock'],
     queryFn: () => apiClient.getClock(),
+    enabled: !!user,
   });
 
-  // Global Audit Query
+  // Global Audit Query (restricted to roles permitted to view audit ledger)
+  const canViewAudit = !!user && (role === 'AICTE_ADMIN' || role === 'SCRUTINY_OFFICER' || role === 'REGIONAL_OFFICER');
   const { data: auditState } = useQuery({
     queryKey: ['audit-verify'],
     queryFn: () => apiClient.verifyAudit(),
+    enabled: canViewAudit,
   });
 
   // Clock Advance Mutation (Admin only)

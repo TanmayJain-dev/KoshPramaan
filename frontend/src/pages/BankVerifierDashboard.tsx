@@ -132,6 +132,11 @@ export const BankVerifierDashboard: React.FC = () => {
                         <Lock className="w-3 h-3 text-red-400" /> Discrepancy Locked
                       </span>
                     )}
+                    {fdr.status === 'closed_early' && (
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-amber-400" /> Closed Early
+                      </span>
+                    )}
                   </div>
                   <p className="text-slate-300">
                     College: <strong className="text-white">{fdr.institution_id}</strong> • Branch: {fdr.branch} (IFSC: {fdr.ifsc})

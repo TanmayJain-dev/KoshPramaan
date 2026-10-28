@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Footer } from '../components/Footer';
 import { 
   ShieldCheck, 
   FileCheck2, 
@@ -75,6 +76,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
           <p className="text-xs text-slate-400">
             Each role accesses distinct data isolation scopes, workflow state-machine steps, and permissions.
           </p>
+          <div className="text-[11px] font-mono text-amber-300/90 pt-1">
+            Demo authentication (no real credentials)
+          </div>
         </div>
 
         {/* 6 Demo Personas Cards */}
@@ -118,10 +122,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
 
       </div>
 
-      {/* Footer */}
-      <footer className="text-center text-xs text-slate-500 mt-10">
-        KoshPramaan SIH 2026 Prototype • Authentic SHA-256 Chained Ledger • Mocked Banking &amp; E-Sign
-      </footer>
+      {/* Permanent Footer with Honesty Badge */}
+      <div className="mt-12 w-full">
+        <Footer />
+      </div>
     </div>
   );
 };

@@ -303,9 +303,15 @@ export const RegionalOfficerDashboard: React.FC = () => {
                       <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
                         {fdr.id}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-red-950 text-red-300 border border-red-800">
-                        Proof Score: {fdr.proof_score?.toFixed(1) ?? '54.2'} / 100
-                      </span>
+                      {fdr.status === 'closed_early' ? (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-400" /> Closed Early
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-red-950 text-red-300 border border-red-800">
+                          Proof Score: {fdr.proof_score?.toFixed(1) ?? '54.2'} / 100
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-300">
                       College: <strong className="text-white">{fdr.institution_id}</strong> • Principal: ₹{fdr.principal.toLocaleString('en-IN')} • Bank: {fdr.bank}

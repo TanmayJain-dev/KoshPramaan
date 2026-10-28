@@ -172,25 +172,27 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Right: User Identity Pill & Role Switcher */}
           <div className="flex items-center space-x-3">
             {/* Audit Chain Pill */}
-            <div 
-              className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                auditValid 
-                  ? 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300' 
-                  : 'bg-red-950/60 border-red-800/60 text-red-300'
-              }`}
-            >
-              {auditValid ? (
-                <>
-                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                  <span className="text-[11px]">Chain Valid</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-3 w-3 text-red-400" />
-                  <span className="text-[11px]">Tamper Detected</span>
-                </>
-              )}
-            </div>
+            {(role === 'AICTE_ADMIN' || role === 'SCRUTINY_OFFICER' || role === 'REGIONAL_OFFICER') && (
+              <div 
+                className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                  auditValid 
+                    ? 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300' 
+                    : 'bg-red-950/60 border-red-800/60 text-red-300'
+                }`}
+              >
+                {auditValid ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    <span className="text-[11px]">Chain Valid</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-3 w-3 text-red-400" />
+                    <span className="text-[11px]">Tamper Detected</span>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* User Profile & Context Badge */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
@@ -213,6 +215,15 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Users className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Switch Role</span>
+            </button>
+
+            {/* Logout Button */}
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 border border-slate-800 hover:border-red-800 transition"
+              title="Logout / Return to Persona Select Screen"
+            >
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
 

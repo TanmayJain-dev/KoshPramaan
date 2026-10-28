@@ -15,14 +15,15 @@ import {
   Scale,
   Hash,
   Database,
-  ArrowRight
+  ArrowRight,
+  TrendingDown
 } from 'lucide-react';
 import { DuplicateSummary, AuditVerify, AuditEvent } from '../types';
 
 export const ScrutinyDashboard: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'duplicates' | 'audit' | 'liabilities'>('duplicates');
+  const [activeTab, setActiveTab] = useState<'duplicates' | 'audit' | 'liabilities' | 'decay_watchlist'>('duplicates');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -34,6 +35,11 @@ export const ScrutinyDashboard: React.FC = () => {
   const { data: duplicateSummary, isLoading: isDupLoading } = useQuery({
     queryKey: ['duplicate-summary'],
     queryFn: () => apiClient.getDuplicateSummary(),
+  });
+
+  const { data: decayWatchlist = [] } = useQuery({
+    queryKey: ['decay-watchlist-scrutiny'],
+    queryFn: () => apiClient.getDecayWatchlist(),
   });
 
   const { data: auditState, refetch: refetchAudit, isLoading: isAuditLoading } = useQuery({
@@ -82,17 +88,17 @@ export const ScrutinyDashboard: React.FC = () => {
             </div>
             <h1 className="text-2xl font-bold text-white mt-1.5 flex items-center space-x-2">
               <ShieldAlert className="w-6 h-6 text-amber-400" />
-              <span>Vigilance &amp; Cross-Institution Collusion Detector</span>
+              <span>Vigilance &amp; Possible Duplicate Detector</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              National audit surface: identifies duplicate instrument fingerprints pledged across multiple institutions and audits cryptographic integrity.
+              National audit surface: identifies possible duplicate instrument fingerprints pledged across multiple institutions and audits cryptographic integrity.
             </p>
           </div>
 
           <div className="flex items-center space-x-3 text-xs font-mono">
             <div className="bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800">
-              <div className="text-slate-400">Duplicate Clusters</div>
-              <div className="font-bold text-red-400">{duplicateSummary?.total_duplicates_found ?? 1} Critical Alert</div>
+              <div className="text-slate-400">Possible Duplicate Signals</div>
+              <div className="font-bold text-red-400">{duplicateSummary?.total_duplicates_found ?? 1} Risk Signal</div>
             </div>
             <div className="bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800">
               <div className="text-slate-400">Audit Ledger</div>
@@ -115,7 +121,7 @@ export const ScrutinyDashboard: React.FC = () => {
           }`}
         >
           <Copy className="w-4 h-4" />
-          <span>Duplicate Collusion Detector ({duplicateSummary?.total_duplicates_found ?? 0})</span>
+          <span>Possible Duplicate Detector ({duplicateSummary?.total_duplicates_found ?? 0})</span>
         </button>
 
         <button
@@ -141,9 +147,21 @@ export const ScrutinyDashboard: React.FC = () => {
           <Layers className="w-4 h-4" />
           <span>SHA-256 Cryptographic Audit Ledger</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('decay_watchlist')}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+            activeTab === 'decay_watchlist'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-900/40'
+              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <TrendingDown className="w-4 h-4" />
+          <span>Decay &amp; Early-Closure Watchlist ({decayWatchlist.length})</span>
+        </button>
       </div>
 
-      {/* TAB 1: DUPLICATE COLLUSION DETECTOR */}
+      {/* TAB 1: POSSIBLE DUPLICATE DETECTOR */}
       {activeTab === 'duplicates' && (
         <div className="space-y-6">
           {duplicateSummary?.duplicates && duplicateSummary.duplicates.length > 0 ? (
@@ -165,7 +183,7 @@ export const ScrutinyDashboard: React.FC = () => {
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-white mt-1">
-                        Cross-Institution Duplicate Fingerprint Collusion
+                        Cross-Institution Possible Duplicate Fingerprint Signal
                       </h3>
                     </div>
                   </div>
@@ -178,11 +196,11 @@ export const ScrutinyDashboard: React.FC = () => {
                 <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-start space-x-2.5">
                   <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    <strong>Statutory Regulatory Notice:</strong> {cluster.signal_notice} Automated systems produce evidentiary signals, not binding legal verdicts.
+                    <strong>Statutory Regulatory Notice:</strong> {cluster.signal_notice} Automated systems produce evidentiary risk signals for officer review, not automated verdicts.
                   </p>
                 </div>
 
-                {/* Collusion Pair Cards */}
+                {/* Possible Duplicate Pair Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {cluster.institutions_involved.map((item, i) => (
                     <div key={i} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
@@ -359,6 +377,65 @@ export const ScrutinyDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* TAB 4: DECAY & EARLY-CLOSURE WATCHLIST */}
+      {activeTab === 'decay_watchlist' && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-rose-950/20">
+            <div>
+              <h2 className="text-lg font-bold text-rose-200 flex items-center space-x-2">
+                <TrendingDown className="w-5 h-5 text-rose-400" />
+                <span>National Proof-Score Decay &amp; Early-Closure Watchlist</span>
+              </h2>
+              <p className="text-xs text-rose-300/80">
+                National vigilance monitoring: instruments decayed below threshold (60.0) or flagged with early bank closure.
+              </p>
+            </div>
+            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-rose-950 text-rose-300 border border-rose-800">
+              Vigilance Threshold: 60.0
+            </span>
+          </div>
+
+          {decayWatchlist.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+              All national FDR deposits currently maintain proof scores above 60.0. Advance clock to observe decay or early closure.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-800/60">
+              {decayWatchlist.map((fdr) => (
+                <div key={fdr.id} className="p-6 hover:bg-slate-800/20 transition flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
+                      <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        {fdr.id}
+                      </span>
+                      {fdr.status === 'closed_early' ? (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-400" /> Closed Early
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                          Proof Score: {fdr.proof_score?.toFixed(1) ?? '0.0'} / 100
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-300">
+                      College: <strong className="text-white">{fdr.institution_id}</strong> • Principal: ₹{fdr.principal.toLocaleString('en-IN')} • Bank: {fdr.bank}
+                    </p>
+                    <p className="text-[11px] text-rose-400/90 font-mono">
+                      {fdr.status === 'closed_early'
+                        ? 'CRITICAL ALERT: Instrument closed early at bank before statutory lien maturity!'
+                        : 'Decay Alert: Proof score degraded over time; scheduled re-verification required.'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

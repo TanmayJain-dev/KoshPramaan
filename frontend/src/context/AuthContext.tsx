@@ -51,19 +51,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               setToken(storedToken);
             }
           } catch (e) {
-            // Token expired or invalid, auto-login as maker_apex for smooth demo experience
-            const loginRes = await apiClient.login('maker_apex');
+            apiClient.clearToken();
             if (isMounted) {
-              setUser(loginRes.user);
-              setToken(loginRes.access_token);
+              setUser(null);
+              setToken(null);
             }
-          }
-        } else {
-          // Default to Maker Apex for initial landing
-          const loginRes = await apiClient.login('maker_apex');
-          if (isMounted) {
-            setUser(loginRes.user);
-            setToken(loginRes.access_token);
           }
         }
       } catch (err) {
