@@ -6,11 +6,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./koshpramaan.db
+      - DATABASE_URL=sqlite:////app/data/koshpramaan.db
       - JWT_SECRET=koshpramaan-sih-2026-secret-key-salt
       - ACCESS_TOKEN_EXPIRE_HOURS=24
     volumes:
-      - ./backend/koshpramaan.db:/app/koshpramaan.db
+      - koshpramaan-data:/app/data
 
   frontend:
     build:
@@ -20,3 +20,7 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+
+volumes:
+  koshpramaan-data:
+

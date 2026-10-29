@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 WORKDIR /app
+RUN mkdir -p /app/data
 COPY pyproject.toml README.md ./
 RUN pip install --no-cache-dir uvicorn fastapi sqlalchemy pydantic pydantic-settings python-multipart pyjwt itsdangerous qrcode pillow pytest httpx
 COPY . .
