@@ -4,76 +4,29 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Institution, FDR, User
 from ..auth import get_current_user
-from ..schemas import InstitutionOut, FDROut, FieldClaimOut, LiabilityOut
+from ..schemas import InstitutionOut, LiabilityOut
+from .fdrs_router import build_fdr_out
 
 router = APIRouter(prefix="/institutions", tags=["Institutions"])
 
 
 def build_institution_out(inst: Institution, db: Session, current_user: Optional[User] = None) -> InstitutionOut:
-    fdr_outs = []
-    total_principal = 0.0
-
     user_role = current_user.role if current_user else "AICTE_ADMIN"
     user_bank = current_user.bank if current_user else None
 
-    # Filter FDRs if bank verifier
+    # Filter FDRs based on role
     fdrs_to_process = inst.fdrs
     if user_role == "BANK_VERIFIER" and user_bank:
-        fdrs_to_process = [f for f in inst.fdrs if f.bank == user_bank]
+        fdrs_to_process = [f for f in fdrs_to_process if f.bank == user_bank]
 
-    is_institution_role = user_role in ["INSTITUTION_MAKER", "INSTITUTION_CHECKER", "INSTITUTION"]
-
-    for f in fdrs_to_process:
-        total_principal += f.principal
-        # Count duplicates with same fingerprint across institutions
-        dup_count = (
-            db.query(FDR)
-            .filter(FDR.fingerprint == f.fingerprint, FDR.institution_id != inst.id)
-            .count()
-        )
-        claims = [
-            FieldClaimOut(
-                id=c.id,
-                field=c.field,
-                claimed_value=c.claimed_value,
-                bank_value=c.bank_value,
-                trust_level=c.trust_level,
-                verified_at=c.verified_at,
-                source=c.source,
-            )
-            for c in f.field_claims
+    if user_role in ["REGIONAL_OFFICER", "BANK_VERIFIER"]:
+        fdrs_to_process = [
+            f for f in fdrs_to_process
+            if f.workflow_status not in ["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]
         ]
-        fdr_outs.append(
-            FDROut(
-                id=f.id,
-                institution_id=f.institution_id,
-                institution_name=inst.name,
-                receipt_no=f.receipt_no,
-                parent_receipt_id=f.parent_receipt_id,
-                bank=f.bank,
-                branch=f.branch,
-                ifsc=f.ifsc,
-                principal=f.principal,
-                issue_date=f.issue_date,
-                maturity_date=f.maturity_date,
-                lien_clause_ok=f.lien_clause_ok,
-                status=f.status,
-                fingerprint=f.fingerprint,
-                doc_hash=f.doc_hash,
-                field_claims=claims,
-                # Honesty rule: Institution roles NEVER see cross-institution duplicate flags
-                duplicate_count=0 if is_institution_role else dup_count,
-                workflow_status=getattr(f, "workflow_status", "CHECKER_APPROVED"),
-                created_by=getattr(f, "created_by", None),
-                checked_by=getattr(f, "checked_by", None),
-                checker_remarks=getattr(f, "checker_remarks", None),
-                ro_by=getattr(f, "ro_by", None),
-                ro_remarks=getattr(f, "ro_remarks", None),
-                submitted_at=getattr(f, "submitted_at", None),
-                checked_at=getattr(f, "checked_at", None),
-                ro_action_at=getattr(f, "ro_action_at", None),
-            )
-        )
+
+    fdr_outs = [build_fdr_out(f, db, current_user) for f in fdrs_to_process]
+    total_principal = sum(f.principal for f in fdr_outs)
 
     liabs = [
         LiabilityOut(
@@ -119,11 +72,12 @@ def list_institutions(
     elif current_user.role == "REGIONAL_OFFICER":
         query = query.filter(Institution.region == current_user.region)
 
-    # 3. Bank Verifier: only institutions with deposits at this bank
+    # 3. Bank Verifier: only institutions with deposits at this bank that passed Checker
     elif current_user.role == "BANK_VERIFIER":
         inst_ids = (
             db.query(FDR.institution_id)
             .filter(FDR.bank == current_user.bank)
+            .filter(FDR.workflow_status.notin_(["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]))
             .distinct()
             .all()
         )
@@ -162,7 +116,10 @@ def get_institution(
             )
 
     elif current_user.role == "BANK_VERIFIER":
-        has_fdr_in_bank = any(f.bank == current_user.bank for f in inst.fdrs)
+        has_fdr_in_bank = any(
+            f.bank == current_user.bank and f.workflow_status not in ["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]
+            for f in inst.fdrs
+        )
         if not has_fdr_in_bank:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

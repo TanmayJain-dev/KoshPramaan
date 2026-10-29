@@ -295,7 +295,7 @@ def test_checker_review_rbac(role, expected_status):
 def test_ro_review_rbac(role, expected_status):
     token = get_token_for_user(ROLES_TEST_USERS[role])
     res = client.post(
-        "/api/fdrs/FDR-APEX-001/ro-review",
+        "/api/fdrs/FDR-APEX-002/ro-review",
         json={"action": "approve", "remarks": "Regional approval"},
         headers={"Authorization": f"Bearer {token}"},
     )

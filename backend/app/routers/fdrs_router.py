@@ -23,10 +23,29 @@ from ..adapters import mock_bank
 
 router = APIRouter(prefix="/fdrs", tags=["FDRs"])
 
+TRANSITIONS = {
+    "DRAFT": ["SUBMITTED"],
+    "SUBMITTED": ["CHECKER_APPROVED", "RETURNED_TO_MAKER"],
+    "CHECKER_APPROVED": ["RO_APPROVED", "RO_REJECTED", "CLARIFICATION_REQUESTED"],
+    "RETURNED_TO_MAKER": ["SUBMITTED"],
+    "CLARIFICATION_REQUESTED": ["SUBMITTED"],
+}
+
 
 def compute_fdr_fingerprint(receipt_no: str, bank: str, branch: str) -> str:
     normalized = f"{receipt_no.strip().upper()}:{bank.strip().upper()}:{branch.strip().upper()}"
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def get_decay_threshold(db: Session) -> float:
+    rule_record = db.query(Rule).filter(Rule.key == "proof_score_parameters").first()
+    if rule_record:
+        try:
+            val = json.loads(rule_record.value_json)
+            return float(val.get("threshold", 60.0))
+        except Exception:
+            pass
+    return 60.0
 
 
 def compute_fdr_proof_score(fdr: FDR, db: Session, days_elapsed: int) -> float:
@@ -89,10 +108,11 @@ def build_fdr_out(fdr: FDR, db: Session, current_user: Optional[User] = None) ->
     inst_name = inst.name if inst else "Unknown"
 
     user_role = current_user.role if current_user else "AICTE_ADMIN"
-    is_institution_role = user_role in ["INSTITUTION_MAKER", "INSTITUTION_CHECKER", "INSTITUTION"]
+    can_see_duplicates = user_role in ["SCRUTINY_OFFICER", "AICTE_ADMIN"]
 
+    decay_threshold = get_decay_threshold(db)
     proof_score = compute_fdr_proof_score(fdr, db, days_elapsed)
-    decay_risk = (proof_score < 60.0) or (effective_status == "closed_early")
+    decay_risk = (proof_score < decay_threshold) or (effective_status == "closed_early")
 
     claims = [
         FieldClaimOut(
@@ -126,8 +146,8 @@ def build_fdr_out(fdr: FDR, db: Session, current_user: Optional[User] = None) ->
         fingerprint=fdr.fingerprint,
         doc_hash=fdr.doc_hash,
         field_claims=claims,
-        # Honesty rule: Institution role NEVER sees cross-institution duplicate warnings
-        duplicate_count=0 if is_institution_role else dup_count,
+        # Honesty rule: duplicate_count is 0 for all roles except SCRUTINY_OFFICER and AICTE_ADMIN
+        duplicate_count=dup_count if can_see_duplicates else 0,
         workflow_status=getattr(fdr, "workflow_status", "CHECKER_APPROVED"),
         created_by=getattr(fdr, "created_by", None),
         checked_by=getattr(fdr, "checked_by", None),
@@ -153,7 +173,7 @@ def list_fdrs(
     if current_user.role in ["INSTITUTION_MAKER", "INSTITUTION_CHECKER"]:
         query = query.filter(FDR.institution_id == current_user.institution_id)
 
-    # 2. Regional Officer: only institutions in their region
+    # 2. Regional Officer: only institutions in their region (claims that passed Checker)
     elif current_user.role == "REGIONAL_OFFICER":
         inst_ids = (
             db.query(Institution.id)
@@ -162,14 +182,16 @@ def list_fdrs(
         )
         allowed_ids = [i[0] for i in inst_ids]
         query = query.filter(FDR.institution_id.in_(allowed_ids))
+        query = query.filter(FDR.workflow_status.notin_(["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]))
         if institution_id:
             if institution_id not in allowed_ids:
                 return []
             query = query.filter(FDR.institution_id == institution_id)
 
-    # 3. Bank Verifier: only FDRs issued by their bank
+    # 3. Bank Verifier: only FDRs issued by their bank (claims that passed Checker)
     elif current_user.role == "BANK_VERIFIER":
         query = query.filter(FDR.bank == current_user.bank)
+        query = query.filter(FDR.workflow_status.notin_(["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]))
         if institution_id:
             query = query.filter(FDR.institution_id == institution_id)
 
@@ -186,7 +208,7 @@ def get_decay_watchlist(
     current_user: User = Depends(require_roles(["REGIONAL_OFFICER", "SCRUTINY_OFFICER", "AICTE_ADMIN"])),
     db: Session = Depends(get_db),
 ):
-    """Returns FDRs whose proof score has decayed below the regulatory threshold (60.0) in the user's region."""
+    """Returns FDRs whose proof score has decayed below the regulatory threshold in the user's region."""
     if not isinstance(current_user, User):
         role = "REGIONAL_OFFICER"
         current_user = db.query(User).filter(User.role == role).first() or db.query(User).first()
@@ -209,11 +231,12 @@ def get_decay_watchlist(
     fdrs = query.all()
     clock_state = clock.get_state(db)
     days_elapsed = clock_state.get("days_elapsed", 0)
+    decay_threshold = get_decay_threshold(db)
 
     decayed = []
     for f in fdrs:
         score = compute_fdr_proof_score(f, db, days_elapsed)
-        if score < 60.0:
+        if score < decay_threshold:
             decayed.append(build_fdr_out(f, db, current_user))
 
     return decayed
@@ -295,6 +318,11 @@ def get_fdr(
             )
 
     elif current_user.role == "REGIONAL_OFFICER":
+        if fdr.workflow_status in ["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: Regional Officers cannot view claims in '{fdr.workflow_status}' state.",
+            )
         inst = db.query(Institution).filter(Institution.id == fdr.institution_id).first()
         if inst and inst.region != current_user.region:
             raise HTTPException(
@@ -303,6 +331,11 @@ def get_fdr(
             )
 
     elif current_user.role == "BANK_VERIFIER":
+        if fdr.workflow_status in ["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: Bank Verifiers cannot view claims in '{fdr.workflow_status}' state.",
+            )
         if fdr.bank != current_user.bank:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -395,8 +428,11 @@ def update_draft_fdr(
     if not fdr:
         raise HTTPException(status_code=404, detail="FDR draft not found in your institution.")
 
-    if fdr.workflow_status not in ["DRAFT", "RETURNED_TO_MAKER"]:
-        raise HTTPException(status_code=400, detail=f"Cannot edit FDR in state '{fdr.workflow_status}'. Only DRAFT or RETURNED_TO_MAKER can be modified.")
+    if fdr.workflow_status not in ["DRAFT", "RETURNED_TO_MAKER", "CLARIFICATION_REQUESTED"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot edit FDR in state '{fdr.workflow_status}'. Only DRAFT, RETURNED_TO_MAKER, or CLARIFICATION_REQUESTED can be modified.",
+        )
 
     if req.receipt_no is not None:
         fdr.receipt_no = req.receipt_no
@@ -444,8 +480,11 @@ def submit_fdr_to_checker(
     if not fdr:
         raise HTTPException(status_code=404, detail="FDR not found in your institution.")
 
-    if fdr.workflow_status not in ["DRAFT", "RETURNED_TO_MAKER"]:
-        raise HTTPException(status_code=400, detail=f"Cannot submit FDR in '{fdr.workflow_status}' state.")
+    if fdr.workflow_status not in ["DRAFT", "RETURNED_TO_MAKER", "CLARIFICATION_REQUESTED"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot submit FDR in '{fdr.workflow_status}' state. Valid states for submission are DRAFT, RETURNED_TO_MAKER, or CLARIFICATION_REQUESTED.",
+        )
 
     now_sim = clock.now(db)
     fdr.workflow_status = "SUBMITTED"
@@ -486,7 +525,10 @@ def checker_review_fdr(
         raise HTTPException(status_code=404, detail="FDR not found in your institution.")
 
     if fdr.workflow_status != "SUBMITTED":
-        raise HTTPException(status_code=400, detail=f"FDR is in state '{fdr.workflow_status}', not 'SUBMITTED'.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot review FDR in state '{fdr.workflow_status}'. Checker review requires SUBMITTED state.",
+        )
 
     # STRICT MAKER != CHECKER ENFORCEMENT
     if fdr.created_by == current_user.id:
@@ -550,6 +592,12 @@ def ro_review_fdr(
             detail=f"Access denied: FDR belongs to institution outside your region ({current_user.region}).",
         )
 
+    if fdr.workflow_status != "CHECKER_APPROVED":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot perform Regional Officer review on FDR in state '{fdr.workflow_status}'. RO review requires CHECKER_APPROVED state.",
+        )
+
     now_sim = clock.now(db)
     fdr.ro_by = current_user.id
     fdr.ro_action_at = now_sim
@@ -605,6 +653,12 @@ def bank_verify_fdr(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Access denied: you can only attest deposits held at {current_user.bank}.",
+        )
+
+    if fdr.workflow_status in ["DRAFT", "SUBMITTED", "RETURNED_TO_MAKER"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot perform bank verification on FDR in state '{fdr.workflow_status}'. Bank attestation requires claims to have passed Checker review (CHECKER_APPROVED or later).",
         )
 
     now_sim = clock.now(db)
