@@ -15,7 +15,11 @@ import {
   RotateCcw,
   FileCheck,
   FileText,
-  Lock
+  Lock,
+  ShieldCheck,
+  Search,
+  ExternalLink,
+  Info
 } from 'lucide-react';
 
 export const CheckerDashboard: React.FC = () => {
@@ -65,49 +69,55 @@ export const CheckerDashboard: React.FC = () => {
   const pastFDRs = fdrs.filter((f) => f.workflow_status !== 'SUBMITTED');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-teal-500 text-teal-200 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-sm font-medium">
-          <CheckCircle2 className="w-4 h-4 text-teal-400" />
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-50 border border-emerald-300 text-emerald-900 px-4 py-3 rounded-lg shadow-card flex items-center space-x-2 text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Scope Banner */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div className="bg-white border border-aicte-border rounded-xl p-6 shadow-card">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
                 Checker Authority Desk
               </span>
-              <span className="text-xs text-slate-400 font-mono">Scope: {user?.institution_id}</span>
+              <span className="text-xs text-slate-500 font-mono">
+                Jurisdiction Scope: <strong className="text-slate-700">{user?.institution_id}</strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs text-slate-500">
+                Affiliation: <strong className="text-slate-700">{institution?.region || 'Northern Region'}</strong>
+              </span>
             </div>
-            <h1 className="text-2xl font-bold text-white mt-1.5 flex items-center space-x-2">
-              <UserCheck className="w-6 h-6 text-indigo-400" />
+            <h1 className="text-xl md:text-2xl font-bold text-aicte-ink flex items-center gap-2.5 pt-1">
+              <UserCheck className="w-6 h-6 text-indigo-700 shrink-0" />
               <span>{institution?.name || 'Apex Institute of Technology'}</span>
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Internal verification queue. Reviews claims entered by Maker prior to regional regulatory submission.
+            <p className="text-xs text-aicte-subtext">
+              Second-tier internal compliance desk. Exercises four-eyes principle to verify Maker submissions before formal regional regulatory sanction.
             </p>
           </div>
 
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-xs font-mono">
-            <span className="text-slate-400">Pending Review: </span>
-            <span className="font-bold text-indigo-300 text-sm">{pendingFDRs.length} Claim(s)</span>
+          <div className="bg-slate-50 border border-slate-200 px-4 py-3 rounded-lg text-xs font-mono shrink-0 shadow-xs">
+            <span className="text-slate-500">Pending Review Queue: </span>
+            <span className="font-bold text-indigo-900 text-sm ml-1">{pendingFDRs.length} Claim(s)</span>
           </div>
         </div>
       </div>
 
       {/* Pending Submissions Queue */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="bg-white border border-aicte-border rounded-xl overflow-hidden shadow-card">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
           <div>
-            <h2 className="text-lg font-bold text-white">Pending Verification Inbox</h2>
-            <p className="text-xs text-slate-400">Claims submitted by Institution Maker awaiting formal verification</p>
+            <h2 className="text-sm font-bold text-aicte-ink">Pending Verification Inbox</h2>
+            <p className="text-xs text-aicte-subtext">Claims submitted by Institution Maker awaiting formal internal verification</p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-950/80 text-amber-300 border border-amber-800">
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300">
             {pendingFDRs.length} Action(s) Required
           </span>
         </div>
@@ -117,28 +127,32 @@ export const CheckerDashboard: React.FC = () => {
             No claims currently pending review. All Maker claims have been verified or returned.
           </div>
         ) : (
-          <div className="divide-y divide-slate-800/60">
+          <div className="divide-y divide-slate-200">
             {pendingFDRs.map((fdr) => {
               const isCreator = fdr.created_by === user?.id;
               return (
-                <div key={fdr.id} data-testid={`fdr-row-${fdr.id}`} className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
-                      <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                <div 
+                  key={fdr.id} 
+                  data-testid={`fdr-row-${fdr.id}`} 
+                  className="p-5 hover:bg-slate-50/70 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-aicte-ink">{fdr.receipt_no}</span>
+                      <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                         {fdr.id}
                       </span>
                       {isCreator && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-red-950 text-red-300 border border-red-800 flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Creator Segregation Conflict
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-red-50 text-red-800 border border-red-200 flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-red-600" /> Creator Segregation Conflict
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-300">
-                      {fdr.bank} ({fdr.branch}) • Principal: <strong className="text-teal-400 font-mono">₹{fdr.principal.toLocaleString('en-IN')}</strong> • Maturity: {fdr.maturity_date}
+                    <p className="text-xs text-slate-700">
+                      {fdr.bank} ({fdr.branch}) • Principal: <strong className="text-slate-900 font-mono">₹{fdr.principal.toLocaleString('en-IN')}</strong> • Maturity: <span className="font-mono text-slate-600">{fdr.maturity_date}</span>
                     </p>
-                    <p className="text-[11px] text-slate-400">
-                      Lien Clause: <span className={fdr.lien_clause_ok ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>{fdr.lien_clause_ok ? 'Marked' : 'Missing'}</span> • Document Hash: <span className="font-mono text-slate-300">{fdr.doc_hash?.substring(0, 16)}...</span>
+                    <p className="text-[11px] text-slate-500">
+                      Lien Clause: <span className={fdr.lien_clause_ok ? 'text-emerald-700 font-semibold' : 'text-red-700 font-semibold'}>{fdr.lien_clause_ok ? 'Marked' : 'Missing'}</span> • Document Hash: <span className="font-mono text-slate-700">{fdr.doc_hash?.substring(0, 16)}...</span>
                     </p>
                   </div>
 
@@ -148,7 +162,7 @@ export const CheckerDashboard: React.FC = () => {
                       setSelectedFdr(fdr);
                       setRemarks('');
                     }}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-md shadow-indigo-900/40"
+                    className="px-4 py-2 rounded-md bg-indigo-700 hover:bg-indigo-800 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-xs shrink-0"
                   >
                     <FileCheck className="w-4 h-4" />
                     <span>Review &amp; Verify</span>
@@ -162,65 +176,74 @@ export const CheckerDashboard: React.FC = () => {
 
       {/* Review Modal */}
       {selectedFdr && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white border border-aicte-border rounded-xl max-w-2xl w-full p-6 shadow-2xl space-y-4 my-8">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">Checker Review &amp; Segregation Check</h3>
-                <p className="text-xs text-slate-400 font-mono">Claim: {selectedFdr.id} ({selectedFdr.receipt_no})</p>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-800 border border-indigo-200 uppercase">
+                    Statutory Checker Audit
+                  </span>
+                  <span className="text-xs text-slate-500">Four-Eyes Verification</span>
+                </div>
+                <h3 className="text-lg font-bold text-aicte-ink mt-1">Checker Review &amp; Segregation Check</h3>
+                <p className="text-xs text-slate-500 font-mono">Claim ID: {selectedFdr.id} ({selectedFdr.receipt_no})</p>
               </div>
-              <button onClick={() => setSelectedFdr(null)} className="text-slate-400 hover:text-white">
+              <button 
+                onClick={() => setSelectedFdr(null)} 
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Maker != Checker Segregation Alert */}
             {selectedFdr.created_by === user?.id ? (
-              <div className="bg-red-950/80 border border-red-700 p-4 rounded-xl space-y-2">
-                <div className="flex items-center space-x-2 text-red-300 font-bold text-xs uppercase tracking-wide">
-                  <ShieldAlert className="w-4 h-4 text-red-400" />
+              <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded-r-lg space-y-1.5 text-xs text-red-900">
+                <div className="flex items-center space-x-2 font-bold uppercase tracking-wider text-[11px] text-red-800">
+                  <ShieldAlert className="w-4 h-4 text-red-700 shrink-0" />
                   <span>Maker-Checker Segregation Safeguard Triggered</span>
                 </div>
-                <p className="text-xs text-red-200 leading-relaxed">
-                  You are registered as the <strong>Maker</strong> who created this draft claim. Under AICTE security regulations, the Maker cannot approve their own submission. An independent Checker must verify.
+                <p className="leading-relaxed">
+                  You are registered as the <strong>Maker</strong> who created this draft claim. Under AICTE security regulations and the statutory four-eyes principle, the Maker cannot approve their own submission. An independent Checker must verify.
                 </p>
-                <p className="text-[11px] text-red-300/80 font-mono">
+                <p className="text-[11px] text-red-700 font-mono">
                   Created by: {selectedFdr.created_by} • Current User: {user?.id}
                 </p>
               </div>
             ) : (
-              <div className="bg-emerald-950/40 border border-emerald-800/80 p-3 rounded-xl flex items-center space-x-2 text-xs text-emerald-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>Segregation Check Passed: You are an independent Checker authorized to verify this submission.</span>
+              <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-lg flex items-center space-x-2.5 text-xs text-emerald-900">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span><strong>Segregation Check Passed:</strong> You are an independent authorized Checker. You did not create this draft claim.</span>
               </div>
             )}
 
             {/* Claim Details Card */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-slate-400">Pledged Principal:</span>
-                  <div className="text-base font-bold text-teal-300 font-mono">₹{selectedFdr.principal.toLocaleString('en-IN')}</div>
+                  <span className="text-slate-500 font-semibold">Pledged Principal:</span>
+                  <div className="text-base font-bold text-slate-900 font-mono">₹{selectedFdr.principal.toLocaleString('en-IN')}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Issuing Bank &amp; Branch:</span>
-                  <div className="text-slate-200 font-medium">{selectedFdr.bank} - {selectedFdr.branch}</div>
+                  <span className="text-slate-500 font-semibold">Issuing Bank &amp; Branch:</span>
+                  <div className="text-slate-800 font-medium">{selectedFdr.bank} - {selectedFdr.branch}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Maturity Date:</span>
-                  <div className="text-slate-200 font-mono">{selectedFdr.maturity_date}</div>
+                  <span className="text-slate-500 font-semibold">Maturity Date:</span>
+                  <div className="text-slate-800 font-mono">{selectedFdr.maturity_date}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Tripartite Lien Clause:</span>
-                  <div className={selectedFdr.lien_clause_ok ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                  <span className="text-slate-500 font-semibold">Tripartite Lien Clause:</span>
+                  <div className={selectedFdr.lien_clause_ok ? 'text-emerald-700 font-bold' : 'text-red-700 font-bold'}>
                     {selectedFdr.lien_clause_ok ? 'Verified Marked' : 'Deficient / Missing'}
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-slate-800/80 pt-2">
-                <span className="text-slate-400">Cryptographic Document Digest (SHA-256):</span>
-                <div className="text-[11px] font-mono text-teal-400 break-all bg-slate-900 p-2 rounded mt-1 border border-slate-800">
+              <div className="border-t border-slate-200 pt-2.5">
+                <span className="text-slate-500 font-semibold">Cryptographic Document Digest (SHA-256):</span>
+                <div className="text-[11px] font-mono text-slate-800 break-all bg-white p-2 rounded mt-1 border border-slate-200 select-all">
                   {selectedFdr.doc_hash || 'SHA-256 Hash Verified against client certificate'}
                 </div>
               </div>
@@ -228,27 +251,27 @@ export const CheckerDashboard: React.FC = () => {
 
             {/* Checker Remarks */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-300">Checker Review Remarks *</label>
+              <label className="block text-xs font-semibold text-slate-700">Checker Review Remarks *</label>
               <textarea
                 rows={3}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
-                placeholder="e.g. Scanned receipt and lien clause verified against institutional bank records."
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                placeholder="e.g. Scanned receipt and tripartite lien clause verified against institutional bank records."
+                className="w-full bg-white border border-slate-300 rounded-md p-3 text-xs text-slate-900 focus:border-indigo-600 focus:outline-none"
               />
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setSelectedFdr(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                className="px-4 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium"
               >
                 Cancel
               </button>
 
-              <div className="flex items-center space-x-2.5">
+              <div className="flex items-center space-x-2">
                 <button
                   type="button"
                   data-testid="return-submission-btn"
@@ -260,7 +283,7 @@ export const CheckerDashboard: React.FC = () => {
                     })
                   }
                   disabled={reviewMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-amber-900/60 hover:bg-amber-800 text-amber-200 text-xs font-semibold border border-amber-700/60"
+                  className="px-4 py-2 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold border border-amber-300 transition"
                 >
                   Return to Maker
                 </button>
@@ -276,10 +299,10 @@ export const CheckerDashboard: React.FC = () => {
                     })
                   }
                   disabled={selectedFdr.created_by === user?.id || reviewMutation.isPending}
-                  className={`px-5 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-md ${
+                  className={`px-5 py-2 rounded-md text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition ${
                     selectedFdr.created_by === user?.id
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/40'
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                      : 'bg-indigo-700 hover:bg-indigo-800 text-white'
                   }`}
                   title={selectedFdr.created_by === user?.id ? 'Maker-Checker Segregation Rule: Creator cannot self-approve' : 'Approve claim'}
                 >
@@ -293,25 +316,28 @@ export const CheckerDashboard: React.FC = () => {
       )}
 
       {/* Verified Claims History */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-slate-800">
-          <h2 className="text-base font-bold text-white">Institution History &amp; Approved Claims</h2>
-          <p className="text-xs text-slate-400">Claims previously sanctioned or under regional review</p>
+      <div className="bg-white border border-aicte-border rounded-xl overflow-hidden shadow-card">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/60">
+          <h2 className="text-sm font-bold text-aicte-ink">Institution History &amp; Approved Claims</h2>
+          <p className="text-xs text-aicte-subtext">Claims previously sanctioned or under regional review</p>
         </div>
         <div className="p-6">
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {pastFDRs.map((fdr) => (
-              <div key={fdr.id} className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs">
+              <div 
+                key={fdr.id} 
+                className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs gap-2"
+              >
                 <div>
-                  <div className="font-bold text-white">{fdr.receipt_no} ({fdr.id})</div>
-                  <div className="text-slate-400">{fdr.bank} • ₹{fdr.principal.toLocaleString('en-IN')}</div>
+                  <div className="font-bold text-aicte-ink">{fdr.receipt_no} ({fdr.id})</div>
+                  <div className="text-slate-600">{fdr.bank} • ₹{fdr.principal.toLocaleString('en-IN')}</div>
                 </div>
-                <div className="text-right">
-                  <span className="px-2.5 py-0.5 rounded-full font-semibold text-[11px] bg-slate-800 text-slate-300">
+                <div className="sm:text-right">
+                  <span className="px-2.5 py-0.5 rounded-full font-semibold text-[11px] bg-white border border-slate-300 text-slate-700">
                     {fdr.workflow_status}
                   </span>
                   {fdr.checker_remarks && (
-                    <div className="text-[10px] text-slate-400 mt-1 max-w-xs truncate">
+                    <div className="text-[10px] text-slate-500 mt-1 max-w-xs truncate">
                       Remarks: {fdr.checker_remarks}
                     </div>
                   )}

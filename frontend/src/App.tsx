@@ -71,10 +71,11 @@ export const App: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-teal-400 font-mono text-sm">
-        <div className="flex items-center space-x-3">
-          <div className="w-5 h-5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
-          <span>Loading KoshPramaan Workspace...</span>
+      <div className="min-h-screen bg-aicte-bg flex items-center justify-center text-aicte-ink font-sans text-sm">
+        <div className="flex flex-col items-center space-y-3 bg-white p-6 rounded-xl border border-aicte-border shadow-card">
+          <div className="w-8 h-8 border-3 border-aicte-blue border-t-transparent rounded-full animate-spin"></div>
+          <span className="font-semibold text-aicte-navy">Loading AICTE KoshPramaan Workspace...</span>
+          <span className="text-xs text-aicte-subtext">Initializing cryptographic session and role scope</span>
         </div>
       </div>
     );
@@ -105,7 +106,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-aicte-bg text-aicte-ink selection:bg-blue-100 selection:text-aicte-navy">
       
       {/* Persistent Navigation & Header */}
       <Header
@@ -120,23 +121,23 @@ export const App: React.FC = () => {
       {/* Floating Notification Toast */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md animate-fade-in">
-          <div className={`p-4 rounded-xl shadow-2xl border flex items-center space-x-3 text-sm font-medium ${
+          <div className={`p-4 rounded-lg shadow-card border flex items-center space-x-3 text-xs font-semibold ${
             notification.type === 'success' 
-              ? 'bg-emerald-950/95 border-emerald-700 text-emerald-200' 
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-900' 
               : notification.type === 'error'
-              ? 'bg-red-950/95 border-red-700 text-red-200'
-              : 'bg-slate-900/95 border-slate-700 text-slate-200'
+              ? 'bg-red-50 border-red-300 text-red-900'
+              : 'bg-white border-slate-300 text-slate-800'
           }`}>
-            {notification.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" />}
-            {notification.type === 'error' && <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />}
-            {notification.type === 'info' && <Clock className="h-5 w-5 text-blue-400 flex-shrink-0" />}
-            <span>{notification.message}</span>
+            {notification.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />}
+            {notification.type === 'error' && <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />}
+            {notification.type === 'info' && <Clock className="h-5 w-5 text-aicte-blue shrink-0" />}
+            <span className="leading-snug">{notification.message}</span>
           </div>
         </div>
       )}
 
       {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {renderDashboard()}
       </main>
 

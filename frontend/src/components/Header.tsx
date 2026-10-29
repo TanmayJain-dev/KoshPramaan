@@ -5,9 +5,7 @@ import {
   RotateCcw, 
   FastForward, 
   Calendar, 
-  UserCheck, 
   Building2, 
-  Award,
   AlertTriangle,
   CheckCircle2,
   Users,
@@ -15,7 +13,8 @@ import {
   Sliders,
   MapPin,
   Landmark,
-  FileCheck2
+  PhoneCall,
+  Clock
 } from 'lucide-react';
 import { ClockState } from '../types';
 
@@ -36,106 +35,147 @@ export const Header: React.FC<HeaderProps> = ({
   auditValid,
   isClockLoading,
 }) => {
-  const { user, role, roleDisplayName, setSwitchPersonaModalOpen, logout } = useAuth();
+  const { user, role, setSwitchPersonaModalOpen, logout } = useAuth();
 
   const formattedDate = clockState 
     ? new Date(clockState.current_time_iso).toLocaleDateString('en-IN', {
+        weekday: 'short',
         day: '2-digit',
         month: 'short',
         year: 'numeric',
       })
-    : '2026-04-01';
+    : 'Wed, 01 Apr 2026';
 
   const getContextLabel = () => {
     if (user?.role === 'INSTITUTION_MAKER' || user?.role === 'INSTITUTION_CHECKER') {
       return (
-        <span className="flex items-center space-x-1 text-slate-300">
-          <Building2 className="w-3.5 h-3.5 text-blue-400" />
-          <span>{user.institution_name || user.institution_id || 'Apex Institute'}</span>
+        <span className="flex items-center space-x-1 text-aicte-subtext">
+          <Building2 className="w-3.5 h-3.5 text-aicte-blue" />
+          <span className="truncate max-w-[200px]">{user.institution_name || user.institution_id || 'Apex Institute of Technology'}</span>
         </span>
       );
     }
     if (user?.role === 'REGIONAL_OFFICER') {
       return (
-        <span className="flex items-center space-x-1 text-slate-300">
-          <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{user.region || 'Northern Region'}</span>
+        <span className="flex items-center space-x-1 text-aicte-subtext">
+          <MapPin className="w-3.5 h-3.5 text-aicte-green" />
+          <span>{user.region || 'Northern Region'} Jurisdiction</span>
         </span>
       );
     }
     if (user?.role === 'BANK_VERIFIER') {
       return (
-        <span className="flex items-center space-x-1 text-slate-300">
-          <Landmark className="w-3.5 h-3.5 text-teal-400" />
-          <span>{user.bank || 'State Bank of India'}</span>
+        <span className="flex items-center space-x-1 text-aicte-subtext">
+          <Landmark className="w-3.5 h-3.5 text-aicte-blue" />
+          <span>{user.bank || 'State Bank of India'} (CBS Desk)</span>
         </span>
       );
     }
     if (user?.role === 'SCRUTINY_OFFICER') {
       return (
-        <span className="flex items-center space-x-1 text-slate-300">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-          <span>Central Vigilance Desk</span>
+        <span className="flex items-center space-x-1 text-aicte-subtext">
+          <AlertTriangle className="w-3.5 h-3.5 text-aicte-gold" />
+          <span>Central Vigilance Cell (National)</span>
         </span>
       );
     }
     return (
-      <span className="flex items-center space-x-1 text-slate-300">
-        <Sliders className="w-3.5 h-3.5 text-purple-400" />
-        <span>HQ Command (National)</span>
+      <span className="flex items-center space-x-1 text-aicte-subtext">
+        <Sliders className="w-3.5 h-3.5 text-aicte-blue" />
+        <span>National Headquarters • AICTE HQ Command</span>
       </span>
     );
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 text-white shadow-xl">
+    <header className="sticky top-0 z-40 bg-white border-b border-aicte-border shadow-subtle">
+      {/* Top Official Utility Strip (Indian Government Portal Standard) */}
+      <div className="bg-aicte-navy text-slate-300 text-[11px] px-4 sm:px-6 lg:px-8 py-1.5 border-b border-aicte-navyLight">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1">
+          <div className="flex items-center space-x-4">
+            <span className="font-semibold text-white tracking-wide uppercase text-[10px]">
+              Government of India • Ministry of Education
+            </span>
+            <span className="hidden md:inline text-slate-500">|</span>
+            <span className="hidden md:flex items-center space-x-1 text-slate-300">
+              <PhoneCall className="w-3 h-3 text-amber-400" />
+              <span>National Support Desk: 1800-258-1800 (Toll Free)</span>
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-3 text-slate-300">
+            <div className="flex items-center space-x-1.5">
+              <Clock className="w-3 h-3 text-emerald-400" />
+              <span>Simulated Time:</span>
+              <strong className="text-white font-mono">{formattedDate}</strong>
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[10px] text-amber-300 border border-slate-700 font-mono">
+                Day {clockState?.days_elapsed ?? 0}
+              </span>
+            </div>
+            <span className="text-slate-500">|</span>
+            <span className="text-slate-400">IST (UTC+05:30)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Navigation & Institutional Brand Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
           {/* Logo & Portal Identity */}
           <div className="flex items-center space-x-3.5">
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-teal-500 p-0.5 shadow-lg shadow-blue-500/20 flex items-center justify-center">
-              <div className="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <ShieldCheck className="h-6 w-6 text-teal-400" />
-              </div>
+            <div className="h-11 w-11 rounded-lg bg-aicte-muted border border-aicte-border flex items-center justify-center shadow-subtle">
+              <ShieldCheck className="h-7 w-7 text-aicte-blue" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-200 via-white to-teal-300 bg-clip-text text-transparent">
+                <span className="font-extrabold text-xl tracking-tight text-aicte-navy">
                   KoshPramaan
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/60 border border-blue-700/50 text-blue-300 font-devanagari font-semibold">
+                <span className="text-xs px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-aicte-blue font-devanagari font-bold">
                   कोष-प्रमाण
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">
-                AICTE Security Deposit &amp; FDR Portal
+              <p className="text-xs text-aicte-subtext font-medium">
+                AICTE Security Deposit &amp; Living FDR Verification Portal
               </p>
             </div>
           </div>
 
-          {/* Center: Clock Status (Controls only for AICTE_ADMIN) */}
-          <div className="hidden lg:flex items-center bg-slate-900/90 border border-slate-800 rounded-xl px-3.5 py-1.5 shadow-inner">
-            <div className="flex items-center space-x-2.5">
-              <Calendar className="h-4 w-4 text-amber-400" />
-              <div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Simulated:</span>
-                  <span className="text-xs font-bold text-slate-100 font-mono">{formattedDate}</span>
-                </div>
-                <div className="text-[10px] font-mono text-teal-400">
-                  Day {clockState?.days_elapsed ?? 0} elapsed
-                </div>
+          {/* Center: Admin Simulation Controls & Audit Telemetry */}
+          <div className="hidden lg:flex items-center space-x-3">
+            {/* Audit Chain Pill (Government Compliance Badge) */}
+            {(role === 'AICTE_ADMIN' || role === 'SCRUTINY_OFFICER' || role === 'REGIONAL_OFFICER') && (
+              <div 
+                className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                  auditValid 
+                    ? 'bg-aicte-greenSurface border-aicte-greenBorder text-aicte-green' 
+                    : 'bg-aicte-redSurface border-aicte-redBorder text-aicte-red animate-pulse'
+                }`}
+                title={auditValid ? 'Cryptographic SHA-256 hash chaining intact' : 'Cryptographic hash mismatch detected'}
+              >
+                {auditValid ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-aicte-green" />
+                    <span>Cryptographic Ledger Valid</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-3.5 w-3.5 text-aicte-red" />
+                    <span>Audit Chain Tampered</span>
+                  </>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Time Machine Advance Controls (EXCLUSIVE TO AICTE_ADMIN) */}
             {role === 'AICTE_ADMIN' && (
-              <div className="flex items-center space-x-1.5 ml-4 pl-3.5 border-l border-slate-800">
+              <div className="flex items-center space-x-1 bg-aicte-muted p-1 rounded-lg border border-aicte-border">
+                <span className="text-[11px] font-semibold text-aicte-subtext px-2">Time Machine:</span>
                 <button
                   onClick={() => onAdvanceClock(7)}
                   disabled={isClockLoading}
-                  className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+                  className="px-2 py-1 text-xs font-medium rounded bg-white hover:bg-slate-50 text-aicte-ink border border-aicte-border shadow-subtle transition"
                   title="Advance clock by 7 days"
                 >
                   +7d
@@ -143,7 +183,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={() => onAdvanceClock(30)}
                   disabled={isClockLoading}
-                  className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+                  className="px-2 py-1 text-xs font-medium rounded bg-white hover:bg-slate-50 text-aicte-ink border border-aicte-border shadow-subtle transition"
                   title="Advance clock by 30 days"
                 >
                   +30d
@@ -151,58 +191,40 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={() => onAdvanceClock(90)}
                   disabled={isClockLoading}
-                  className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-blue-950 hover:bg-blue-900 text-blue-200 border border-blue-800 transition flex items-center space-x-1"
+                  className="px-2 py-1 text-xs font-medium rounded bg-aicte-blue hover:bg-aicte-blueHover text-white shadow-subtle transition flex items-center space-x-1"
                   title="Advance clock by 90 days"
                 >
-                  <FastForward className="h-2.5 w-2.5" />
+                  <FastForward className="h-3 w-3" />
                   <span>+90d</span>
                 </button>
                 <button
                   onClick={onResetClock}
                   disabled={isClockLoading}
-                  className="px-1.5 py-0.5 text-[11px] rounded-md bg-slate-800 hover:bg-red-950/40 text-slate-400 hover:text-red-300 border border-slate-700 transition"
+                  className="px-2 py-1 text-xs rounded bg-white hover:bg-red-50 text-slate-500 hover:text-red-700 border border-aicte-border shadow-subtle transition"
                   title="Reset clock to Day 0"
                 >
-                  <RotateCcw className="h-2.5 w-2.5" />
+                  <RotateCcw className="h-3 w-3" />
                 </button>
               </div>
             )}
           </div>
 
-          {/* Right: User Identity Pill & Role Switcher */}
+          {/* Right: User Context & Actions */}
           <div className="flex items-center space-x-3">
-            {/* Audit Chain Pill */}
-            {(role === 'AICTE_ADMIN' || role === 'SCRUTINY_OFFICER' || role === 'REGIONAL_OFFICER') && (
-              <div 
-                className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                  auditValid 
-                    ? 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300' 
-                    : 'bg-red-950/60 border-red-800/60 text-red-300'
-                }`}
-              >
-                {auditValid ? (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                    <span className="text-[11px]">Chain Valid</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="h-3 w-3 text-red-400" />
-                    <span className="text-[11px]">Tamper Detected</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* User Profile & Context Badge */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-white" data-testid="header-user-name">{user?.name || 'Authorized User'}</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800" data-testid="header-user-role">
+            {/* User Profile Card */}
+            <div className="hidden sm:block text-right">
+              <div className="flex items-center justify-end space-x-2">
+                <span className="font-bold text-sm text-aicte-ink" data-testid="header-user-name">
+                  {user?.name || 'Authorized Official'}
+                </span>
+                <span 
+                  className="text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase bg-blue-50 text-aicte-blue border border-blue-200" 
+                  data-testid="header-user-role"
+                >
                   {user?.role}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">
+              <div className="text-xs text-aicte-subtext mt-0.5 flex justify-end">
                 {getContextLabel()}
               </div>
             </div>
@@ -211,20 +233,20 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setSwitchPersonaModalOpen(true)}
               data-testid="switch-role-btn"
-              className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-md shadow-teal-900/30"
+              className="px-3.5 py-2 rounded-lg bg-aicte-blue hover:bg-aicte-blueHover text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-subtle"
               title="Switch demo persona"
             >
               <Users className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Switch Role</span>
+              <span>Switch Role</span>
             </button>
 
             {/* Logout Button */}
             <button
               onClick={logout}
-              className="p-2 rounded-xl bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 border border-slate-800 hover:border-red-800 transition"
+              className="p-2 rounded-lg bg-aicte-muted hover:bg-red-50 text-aicte-subtext hover:text-red-700 border border-aicte-border transition"
               title="Logout / Return to Persona Select Screen"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
 

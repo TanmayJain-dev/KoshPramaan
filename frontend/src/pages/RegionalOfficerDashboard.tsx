@@ -16,7 +16,9 @@ import {
   ShieldAlert,
   FileCheck2,
   Calendar,
-  Landmark
+  Landmark,
+  Search,
+  ChevronRight
 } from 'lucide-react';
 
 export const RegionalOfficerDashboard: React.FC = () => {
@@ -68,24 +70,23 @@ export const RegionalOfficerDashboard: React.FC = () => {
 
   // Simulated SLA calculation (e.g. 72h window from checked_at)
   const getSlaBadge = (checkedAt: string | null | undefined) => {
-    // Standard mock 48h SLA logic
     const hoursLeft = 36; // Demonstration SLA
     if (hoursLeft > 48) {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-          <Clock className="w-3 h-3 text-emerald-400" /> &gt;48h Remaining
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+          <Clock className="w-3 h-3 text-emerald-600" /> &gt;48h Remaining
         </span>
       );
     } else if (hoursLeft >= 24) {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1">
-          <Clock className="w-3 h-3 text-amber-400" /> {hoursLeft}h SLA (Amber)
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1">
+          <Clock className="w-3 h-3 text-amber-600" /> {hoursLeft}h SLA (Amber)
         </span>
       );
     } else {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-950 text-red-300 border border-red-800 flex items-center gap-1 animate-pulse">
-          <AlertTriangle className="w-3 h-3 text-red-400" /> &lt;24h Critical
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-50 text-red-800 border border-red-300 flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3 text-red-600" /> &lt;24h Critical
         </span>
       );
     }
@@ -95,69 +96,71 @@ export const RegionalOfficerDashboard: React.FC = () => {
     const isConfirmed = fdr.field_claims?.some((c) => c.field === 'principal' && c.trust_level === 'bank_confirmed');
     if (isConfirmed) {
       return (
-        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-          <Landmark className="w-3 h-3 text-emerald-400" /> Bank Attested
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-teal-800 border border-teal-200 flex items-center gap-1">
+          <Landmark className="w-3 h-3 text-teal-600" /> Bank Attested
         </span>
       );
     }
     return (
-      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1">
+      <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-300 flex items-center gap-1">
         <Clock className="w-3 h-3 text-slate-400" /> Pending CBS Attestation
       </span>
     );
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-teal-500 text-teal-200 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-sm font-medium">
-          <CheckCircle2 className="w-4 h-4 text-teal-400" />
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-50 border border-emerald-300 text-emerald-900 px-4 py-3 rounded-lg shadow-card flex items-center space-x-2 text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Regional Scope Header */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div className="bg-white border border-aicte-border rounded-xl p-6 shadow-card">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                 Regional Jurisdictional Authority
               </span>
-              <span className="text-xs text-slate-400 font-mono">Scope: {user?.region || 'Northern Region'}</span>
+              <span className="text-xs text-slate-500 font-mono">
+                Territory Scope: <strong className="text-slate-700">{user?.region || 'Northern Region'}</strong>
+              </span>
             </div>
-            <h1 className="text-2xl font-bold text-white mt-1.5 flex items-center space-x-2">
-              <MapPin className="w-6 h-6 text-emerald-400" />
+            <h1 className="text-xl md:text-2xl font-bold text-aicte-ink flex items-center gap-2.5 pt-1">
+              <MapPin className="w-6 h-6 text-emerald-700 shrink-0" />
               <span>{user?.region || 'Northern Region'} Jurisdiction</span>
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Statutory oversight for technical institutions located strictly within the designated regional territory.
+            <p className="text-xs text-aicte-subtext">
+              Statutory oversight and sanctioning authority for technical education institutions strictly within the assigned geographical region.
             </p>
           </div>
 
-          <div className="flex items-center space-x-3 text-xs font-mono">
-            <div className="bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800">
-              <div className="text-slate-400">Jurisdiction</div>
-              <div className="font-bold text-emerald-300">{institutions.length} Colleges</div>
+          <div className="flex items-center space-x-3 text-xs font-mono shrink-0">
+            <div className="bg-slate-50 px-3.5 py-2.5 rounded-lg border border-slate-200 shadow-xs">
+              <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Colleges in Region</div>
+              <div className="font-bold text-slate-900 text-sm mt-0.5">{institutions.length} Institutions</div>
             </div>
-            <div className="bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800">
-              <div className="text-slate-400">Review Queue</div>
-              <div className="font-bold text-amber-300">{pendingQueue.length} Pending</div>
+            <div className="bg-amber-50/60 px-3.5 py-2.5 rounded-lg border border-amber-200 shadow-xs">
+              <div className="text-amber-800 text-[10px] uppercase font-bold tracking-wider">Sanction Queue</div>
+              <div className="font-bold text-amber-900 text-sm mt-0.5">{pendingQueue.length} Pending</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex space-x-2 border-b border-slate-800 pb-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
         <button
           data-testid="pending-queue-tab"
           onClick={() => setActiveTab('queue')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'queue'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
-              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'
           }`}
         >
           <FileCheck2 className="w-4 h-4" />
@@ -167,10 +170,10 @@ export const RegionalOfficerDashboard: React.FC = () => {
         <button
           data-testid="decay-watchlist-tab"
           onClick={() => setActiveTab('decay_watchlist')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'decay_watchlist'
-              ? 'bg-amber-600 text-white shadow-md shadow-amber-900/40'
-              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'
           }`}
         >
           <TrendingDown className="w-4 h-4" />
@@ -179,10 +182,10 @@ export const RegionalOfficerDashboard: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('institutions')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
+          className={`px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'institutions'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40'
-              : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+              ? 'bg-aicte-blue text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'
           }`}
         >
           <Building2 className="w-4 h-4" />
@@ -192,13 +195,15 @@ export const RegionalOfficerDashboard: React.FC = () => {
 
       {/* TAB 1: REVIEW QUEUE */}
       {activeTab === 'queue' && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="bg-white border border-aicte-border rounded-xl overflow-hidden shadow-card">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
             <div>
-              <h2 className="text-lg font-bold text-white">Checker-Approved Claims Queue</h2>
-              <p className="text-xs text-slate-400">Claims formally verified by college Checker, pending final RO sanction</p>
+              <h2 className="text-sm font-bold text-aicte-ink">Checker-Approved Claims Queue</h2>
+              <p className="text-xs text-aicte-subtext">Claims formally verified by college Checker, pending final regional sanction</p>
             </div>
-            <span className="text-xs text-slate-400 font-mono">Governed by AICTE SLA timer</span>
+            <span className="text-[11px] font-mono font-medium text-slate-600 bg-white px-2.5 py-1 rounded border border-slate-300">
+              Governed by AICTE SLA timer
+            </span>
           </div>
 
           {pendingQueue.length === 0 ? (
@@ -206,33 +211,33 @@ export const RegionalOfficerDashboard: React.FC = () => {
               No claims pending RO review in this region. All verified claims have been sanctioned or clarified.
             </div>
           ) : (
-            <div className="divide-y divide-slate-800/60">
+            <div className="divide-y divide-slate-200">
               {pendingQueue.map((fdr) => (
                 <div
                   key={fdr.id}
                   data-testid={`fdr-row-${fdr.id}`}
-                  className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  className="p-5 hover:bg-slate-50/70 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2.5">
-                      <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
-                      <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-aicte-ink">{fdr.receipt_no}</span>
+                      <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                         {fdr.id}
                       </span>
                       {getSlaBadge(fdr.checked_at)}
                       {getBankAttestationBadge(fdr)}
                     </div>
-                    <p className="text-xs text-slate-300">
-                      College: <strong className="text-white">{fdr.institution_name || fdr.institution_id}</strong> • Principal: <strong className="text-teal-300 font-mono">₹{fdr.principal.toLocaleString('en-IN')}</strong> • Bank: {fdr.bank}
+                    <p className="text-xs text-slate-700">
+                      College: <strong className="text-slate-900">{fdr.institution_name || fdr.institution_id}</strong> • Principal: <strong className="text-slate-900 font-mono">₹{fdr.principal.toLocaleString('en-IN')}</strong> • Bank: {fdr.bank}
                     </p>
                     {fdr.checker_remarks && (
-                      <p className="text-[11px] text-indigo-300 bg-indigo-950/40 px-2.5 py-1 rounded border border-indigo-900/40 inline-block">
+                      <p className="text-[11px] text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-200 inline-block">
                         <strong>Checker Endorsement:</strong> {fdr.checker_remarks}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 shrink-0">
                     <button
                       data-testid={`sanction-btn-${fdr.id}`}
                       onClick={() => {
@@ -240,7 +245,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
                         setActionType('approve');
                         setRoRemarks('Sanction granted based on Checker endorsement and bank confirmation.');
                       }}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center space-x-1 shadow-md shadow-emerald-900/40"
+                      className="px-3.5 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs transition flex items-center space-x-1 shadow-xs"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Sanction</span>
@@ -253,9 +258,9 @@ export const RegionalOfficerDashboard: React.FC = () => {
                         setActionType('clarify');
                         setRoRemarks('Please furnish supplementary tripartite confirmation from bank manager.');
                       }}
-                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-semibold text-xs transition border border-slate-700"
+                      className="px-3 py-2 rounded-md bg-white hover:bg-amber-50 text-amber-900 font-semibold text-xs transition border border-amber-300 shadow-xs flex items-center space-x-1"
                     >
-                      <HelpCircle className="w-3.5 h-3.5" />
+                      <HelpCircle className="w-3.5 h-3.5 text-amber-700" />
                       <span>Clarify</span>
                     </button>
 
@@ -265,9 +270,9 @@ export const RegionalOfficerDashboard: React.FC = () => {
                         setActionType('reject');
                         setRoRemarks('Claim rejected due to irregular tenure and lien non-compliance.');
                       }}
-                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-red-950/60 text-red-300 font-semibold text-xs transition border border-slate-700 hover:border-red-800"
+                      className="px-3 py-2 rounded-md bg-white hover:bg-red-50 text-red-900 font-semibold text-xs transition border border-red-300 shadow-xs flex items-center space-x-1"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3.5 h-3.5 text-red-700" />
                       <span>Reject</span>
                     </button>
                   </div>
@@ -280,58 +285,58 @@ export const RegionalOfficerDashboard: React.FC = () => {
 
       {/* TAB 2: PROOF-SCORE DECAY WATCHLIST */}
       {activeTab === 'decay_watchlist' && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-amber-950/20">
+        <div className="bg-white border border-aicte-border rounded-xl overflow-hidden shadow-card">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-amber-50/50">
             <div>
-              <h2 className="text-lg font-bold text-amber-200 flex items-center space-x-2">
-                <TrendingDown className="w-5 h-5 text-amber-400" />
+              <h2 className="text-sm font-bold text-amber-950 flex items-center space-x-2">
+                <TrendingDown className="w-4 h-4 text-amber-700" />
                 <span>Regional Proof-Score Decay Watchlist</span>
               </h2>
-              <p className="text-xs text-amber-300/80">
-                A scanned certificate loses validity over time. Deposits decayed below threshold (60.0) require immediate re-verification.
+              <p className="text-xs text-amber-900 mt-0.5">
+                Statutory deposit validity decays over elapsed time (90-day half-life). Instruments decaying below threshold (60.0) require immediate bank re-attestation.
               </p>
             </div>
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-amber-950 text-amber-300 border border-amber-800">
+            <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded bg-amber-100 text-amber-900 border border-amber-300">
               Half-Life: 90 Days • Threshold: 60.0
             </span>
           </div>
 
           {decayWatchlist.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-              All FDR records in {user?.region} currently maintain proof scores above the 60.0 threshold. Advance simulated clock to observe regulatory score decay!
+            <div className="p-8 text-center text-slate-500 text-xs">
+              <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+              All FDR records in {user?.region} currently maintain proof scores above the 60.0 regulatory threshold. Advance simulated clock in Admin to observe continuous mathematical decay.
             </div>
           ) : (
-            <div className="divide-y divide-slate-800/60">
+            <div className="divide-y divide-slate-200">
               {decayWatchlist.map((fdr) => (
-                <div key={fdr.id} className="p-6 hover:bg-slate-800/20 transition flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
-                      <span className="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                <div key={fdr.id} className="p-5 hover:bg-slate-50/70 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-aicte-ink">{fdr.receipt_no}</span>
+                      <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                         {fdr.id}
                       </span>
                       {fdr.status === 'closed_early' ? (
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-rose-400" /> Closed Early
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-red-50 text-red-800 border border-red-300 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-red-600" /> Closed Early
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-red-950 text-red-300 border border-red-800">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
                           Proof Score: {fdr.proof_score?.toFixed(1) ?? '54.2'} / 100
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-300">
-                      College: <strong className="text-white">{fdr.institution_id}</strong> • Principal: ₹{fdr.principal.toLocaleString('en-IN')} • Bank: {fdr.bank}
+                    <p className="text-xs text-slate-700">
+                      College: <strong className="text-slate-900">{fdr.institution_id}</strong> • Principal: ₹{fdr.principal.toLocaleString('en-IN')} • Bank: {fdr.bank}
                     </p>
-                    <p className="text-[11px] text-amber-400/90">
-                      Decay Signal: Fresh bank re-verification required to restore trust level before next inspection.
+                    <p className="text-[11px] text-amber-800">
+                      Decay Signal: Fresh bank re-verification required to restore trust level before next regulatory inspection.
                     </p>
                   </div>
 
                   <button
                     onClick={() => showToast(`Re-verification notice dispatched to ${fdr.bank} for claim ${fdr.id}`)}
-                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-md shadow-amber-900/40"
+                    className="px-3.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shadow-xs shrink-0"
                   >
                     Issue Re-Verification Notice
                   </button>
@@ -346,24 +351,24 @@ export const RegionalOfficerDashboard: React.FC = () => {
       {activeTab === 'institutions' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {institutions.map((inst) => (
-            <div key={inst.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+            <div key={inst.id} className="bg-white border border-aicte-border rounded-xl p-5 shadow-card space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">{inst.name}</h3>
-                  <p className="text-xs text-slate-400 font-mono">{inst.id} • {inst.region}</p>
+                  <h3 className="text-sm font-bold text-aicte-ink">{inst.name}</h3>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{inst.id} • {inst.region}</p>
                 </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 font-medium">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium border border-slate-200">
                   {inst.category}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+              <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
                 <div>
-                  <span className="text-slate-400">Approved Intake:</span>
-                  <div className="font-bold text-white">{inst.intake} Students</div>
+                  <span className="text-slate-500 font-medium">Approved Intake:</span>
+                  <div className="font-bold text-slate-900 mt-0.5">{inst.intake} Students</div>
                 </div>
                 <div>
-                  <span className="text-slate-400">Total FDR Security:</span>
-                  <div className="font-bold text-teal-300 font-mono">₹{inst.total_fdr_principal.toLocaleString('en-IN')}</div>
+                  <span className="text-slate-500 font-medium">Total FDR Security:</span>
+                  <div className="font-bold text-slate-900 font-mono mt-0.5">₹{inst.total_fdr_principal.toLocaleString('en-IN')}</div>
                 </div>
               </div>
             </div>
@@ -373,37 +378,40 @@ export const RegionalOfficerDashboard: React.FC = () => {
 
       {/* Action Dialog */}
       {selectedFdr && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-aicte-border rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-white">
+                <h3 className="text-base font-bold text-aicte-ink">
                   {actionType === 'approve' && 'Sanction FDR Deposit'}
                   {actionType === 'clarify' && 'Request Regional Clarification'}
                   {actionType === 'reject' && 'Reject Claim (Adverse Regulatory Action)'}
                 </h3>
-                <p className="text-xs text-slate-400 font-mono">FDR: {selectedFdr.receipt_no}</p>
+                <p className="text-xs text-slate-500 font-mono">FDR: {selectedFdr.receipt_no}</p>
               </div>
-              <button onClick={() => setSelectedFdr(null)} className="text-slate-400 hover:text-white">
+              <button 
+                onClick={() => setSelectedFdr(null)} 
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-slate-300">Regulatory Decision Remarks *</label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-700">Regulatory Decision Remarks *</label>
               <textarea
                 rows={3}
                 value={roRemarks}
                 onChange={(e) => setRoRemarks(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                className="w-full bg-white border border-slate-300 rounded-md p-3 text-xs text-slate-900 focus:border-emerald-600 focus:outline-none"
               />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-2 border-t border-slate-800">
+            <div className="flex justify-end space-x-2 pt-3 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setSelectedFdr(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                className="px-4 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium"
               >
                 Cancel
               </button>
@@ -418,7 +426,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
                   })
                 }
                 disabled={roActionMutation.isPending}
-                className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-900/40"
+                className="px-5 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs"
               >
                 {roActionMutation.isPending ? 'Submitting...' : 'Confirm Decision'}
               </button>
