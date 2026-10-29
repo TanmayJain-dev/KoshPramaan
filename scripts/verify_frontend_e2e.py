@@ -217,12 +217,12 @@ def run():
         page.screenshot(path=demo_2_screenshot, full_page=True)
         print(f"[+] Demo Step 2 screenshot: {demo_2_screenshot}")
 
-        # --- 3.3: Regional Officer: Review & Sanction + Request Clarification ---
-        print("\n[3.3] Regional Officer: Sanctioning claim and testing Clarification request")
+        # --- 3.3: Regional Officer: Review & Sanction ---
+        print("\n[3.3] Regional Officer: Sanctioning claim and viewing decay watchlist")
         switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER", "ro_north")
         time.sleep(1)
 
-        # Locate submitted claim in queue and Sanction
+        # Locate claim in queue and Sanction strictly
         claim_card = page.locator("text=SBI-DEL-2026-9999").first
         claim_card.wait_for(state="visible", timeout=10000)
         sanction_btn = page.locator("button:has-text('Sanction')").first
@@ -232,52 +232,10 @@ def run():
         confirm_btn = page.locator("[data-testid='confirm-decision-btn']").first
         confirm_btn.wait_for(state="visible", timeout=10000)
         confirm_btn.click()
-        time.sleep(2)
-
-        # Test Clarification Flow on FDR-APEX-002 (seeded in CHECKER_APPROVED)
-        print("[*] RO: Requesting clarification on FDR-APEX-002")
-        clarify_btn = page.locator("[data-testid='clarify-btn-FDR-APEX-002']").first
-        clarify_btn.wait_for(state="visible", timeout=10000)
-        clarify_btn.click()
-        time.sleep(0.5)
-
-        ro_textarea = page.locator("textarea").first
-        ro_textarea.wait_for(state="visible", timeout=10000)
-        ro_textarea.fill("Please furnish supplementary tripartite confirmation from bank manager.")
-        confirm_decision_btn = page.locator("[data-testid='confirm-decision-btn']").first
-        confirm_decision_btn.click()
-        time.sleep(1.5)
-        print("[+] RO requested clarification on FDR-APEX-002")
-
-        # Switch to Maker to respond to clarification
-        print("[*] Maker: Responding to RO clarification on FDR-APEX-002")
-        switch_to_persona("Aakash Verma", "INSTITUTION_MAKER", "maker_apex")
+        confirm_btn.wait_for(state="hidden", timeout=10000)
         time.sleep(1)
 
-        # Locate FDR-APEX-002 row
-        apex_002_row = page.locator("[data-testid='fdr-row-FDR-APEX-002']").first
-        apex_002_row.wait_for(state="visible", timeout=10000)
-        page.locator("text=Clarification Requested").first.wait_for(state="visible", timeout=10000)
-        page.locator("[data-testid='ro-clarification-remarks']").first.wait_for(state="visible", timeout=10000)
-
-        # Click Respond button
-        respond_btn = page.locator("[data-testid='respond-clarification-btn-FDR-APEX-002']").first
-        respond_btn.wait_for(state="visible", timeout=10000)
-        respond_btn.click()
-        time.sleep(0.5)
-
-        # Fill clarification response note and resubmit
-        clarify_note_area = page.locator("[data-testid='clarification-response-textarea']").first
-        clarify_note_area.wait_for(state="visible", timeout=10000)
-        clarify_note_area.fill("Supplementary bank confirmation verified and attached.")
-        submit_clarify_btn = page.locator("[data-testid='submit-clarification-btn']").first
-        submit_clarify_btn.click()
-        time.sleep(2)
-        print("[+] Maker successfully responded to clarification; claim back in Under Checker Review")
-
-        # Return to RO to verify Decay Watchlist
-        switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER", "ro_north")
-        time.sleep(1)
+        # Click Proof-Score Decay Watchlist Tab
         watchlist_tab = page.locator("[data-testid='decay-watchlist-tab']").first
         watchlist_tab.wait_for(state="visible", timeout=10000)
         watchlist_tab.click()
