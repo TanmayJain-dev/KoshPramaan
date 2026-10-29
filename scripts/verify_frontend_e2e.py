@@ -111,36 +111,34 @@ def run():
             ("aicte_admin", "Prof. Anil Sahasrabudhe", "AICTE_ADMIN")
         ]
 
-        def switch_to_persona(display_name, role_code):
-            for attempt in range(3):
-                try:
-                    # Check if switch role button is present in header
-                    switch_btns = page.locator("button:has-text('Switch Role')")
-                    if switch_btns.count() > 0:
-                        switch_btns.first.click()
-                        time.sleep(0.8)
-                        modal_card = page.locator(f".fixed >> button:has-text('{display_name}')").first
-                        modal_card.wait_for(state="visible", timeout=10000)
-                        modal_card.click()
-                    else:
-                        card = page.locator(f"button:has-text('{display_name}')").first
-                        card.wait_for(state="visible", timeout=10000)
-                        card.click()
-                    
-                    time.sleep(1.5)
-                    # Strict role assertion in header
-                    role_badge = page.locator(f"header >> text={role_code}").first
-                    role_badge.wait_for(state="visible", timeout=10000)
-                    return
-                except Exception as e:
-                    if attempt == 2:
-                        raise e
-                    print(f"[!] Retrying persona switch to {display_name} ({e})")
-                    time.sleep(1.5)
+        def switch_to_persona(display_name, role_code, username=None):
+            # Check if switch role button is present in header
+            switch_btn = page.locator("[data-testid='switch-role-btn']")
+            if switch_btn.count() > 0 and switch_btn.first.is_visible():
+                switch_btn.first.click()
+                time.sleep(0.3)
+                if username and page.locator(f"[data-testid='persona-btn-{username}']").count() > 0:
+                    modal_card = page.locator(f"[data-testid='persona-btn-{username}']").first
+                else:
+                    modal_card = page.locator(f".fixed >> button:has-text('{display_name}')").first
+                modal_card.wait_for(state="visible", timeout=10000)
+                modal_card.click()
+            else:
+                if username and page.locator(f"[data-testid='login-persona-{username}']").count() > 0:
+                    card = page.locator(f"[data-testid='login-persona-{username}']").first
+                else:
+                    card = page.locator(f"button:has-text('{display_name}')").first
+                card.wait_for(state="visible", timeout=10000)
+                card.click()
+
+            # Strict single-wait on unique user name & role in header (no retry loop)
+            page.locator("[data-testid='header-user-name']").filter(has_text=display_name).wait_for(state="visible", timeout=10000)
+            page.locator("[data-testid='header-user-role']").filter(has_text=role_code).wait_for(state="visible", timeout=10000)
+            time.sleep(0.5)
 
         for username, display_name, role_code in personas:
             print(f"[*] Switching to Persona: {display_name} ({role_code})")
-            switch_to_persona(display_name, role_code)
+            switch_to_persona(display_name, role_code, username)
 
             # Capture role screenshot
             role_screenshot = os.path.join(SCREENSHOTS_DIR, f"role_{username}.png")
@@ -154,11 +152,11 @@ def run():
 
         # --- 3.1: Maker: Create Draft FDR and Submit to Checker ---
         print("\n[3.1] Maker: Creating draft claim and submitting to Checker")
-        switch_to_persona("Aakash Verma", "INSTITUTION_MAKER")
+        switch_to_persona("Aakash Verma", "INSTITUTION_MAKER", "maker_apex")
         time.sleep(1)
 
-        # Click 'New FDR Claim'
-        new_claim_btn = page.locator("button:has-text('New FDR Claim')").first
+        # Click 'New FDR Claim' using data-testid
+        new_claim_btn = page.locator("[data-testid='new-fdr-claim-btn']").first
         new_claim_btn.wait_for(state="visible", timeout=10000)
         new_claim_btn.click()
         time.sleep(1)
@@ -174,7 +172,7 @@ def run():
         save_btn.click()
         time.sleep(2)
 
-        # Assert new draft row is visible (strictly without is_visible skips)
+        # Assert new draft row is visible
         page.locator("text=SBI-DEL-2026-9999").first.wait_for(state="visible", timeout=10000)
         maker_row = page.locator("tr:has-text('SBI-DEL-2026-9999')").first
         maker_row.wait_for(state="visible", timeout=10000)
@@ -191,7 +189,7 @@ def run():
 
         # --- 3.2: Checker: Review & Approve (Maker != Checker) ---
         print("\n[3.2] Checker: Verifying Maker submission with segregation check")
-        switch_to_persona("Dr. Sunita Rao", "INSTITUTION_CHECKER")
+        switch_to_persona("Dr. Sunita Rao", "INSTITUTION_CHECKER", "checker_apex")
         time.sleep(1)
 
         # Verify claim in Pending Verification Inbox
@@ -206,11 +204,11 @@ def run():
         # Assert segregation check passed indicator
         page.locator("text=Segregation Check Passed").first.wait_for(state="visible", timeout=10000)
 
-        # Fill remarks & approve
+        # Fill remarks & approve using data-testid
         textarea = page.locator("textarea").first
         textarea.wait_for(state="visible", timeout=10000)
         textarea.fill("Verified lien clause and bank certificate.")
-        approve_btn = page.locator("button:has-text('Approve Submission')").first
+        approve_btn = page.locator("[data-testid='approve-submission-btn']").first
         approve_btn.wait_for(state="visible", timeout=10000)
         approve_btn.click()
         time.sleep(2)
@@ -219,25 +217,68 @@ def run():
         page.screenshot(path=demo_2_screenshot, full_page=True)
         print(f"[+] Demo Step 2 screenshot: {demo_2_screenshot}")
 
-        # --- 3.3: Regional Officer: Review & Sanction ---
-        print("\n[3.3] Regional Officer: Sanctioning claim and viewing decay watchlist")
-        switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER")
+        # --- 3.3: Regional Officer: Review & Sanction + Request Clarification ---
+        print("\n[3.3] Regional Officer: Sanctioning claim and testing Clarification request")
+        switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER", "ro_north")
         time.sleep(1)
 
-        # Locate claim in queue and Sanction strictly
+        # Locate submitted claim in queue and Sanction
         claim_card = page.locator("text=SBI-DEL-2026-9999").first
         claim_card.wait_for(state="visible", timeout=10000)
         sanction_btn = page.locator("button:has-text('Sanction')").first
         sanction_btn.wait_for(state="visible", timeout=10000)
         sanction_btn.click()
         time.sleep(1)
-        confirm_btn = page.locator("button:has-text('Confirm Decision')").first
+        confirm_btn = page.locator("[data-testid='confirm-decision-btn']").first
         confirm_btn.wait_for(state="visible", timeout=10000)
         confirm_btn.click()
         time.sleep(2)
 
-        # Click Proof-Score Decay Watchlist Tab
-        watchlist_tab = page.locator("button:has-text('Proof-Score Decay Watchlist')").first
+        # Test Clarification Flow on FDR-APEX-002 (seeded in CHECKER_APPROVED)
+        print("[*] RO: Requesting clarification on FDR-APEX-002")
+        clarify_btn = page.locator("[data-testid='clarify-btn-FDR-APEX-002']").first
+        clarify_btn.wait_for(state="visible", timeout=10000)
+        clarify_btn.click()
+        time.sleep(0.5)
+
+        ro_textarea = page.locator("textarea").first
+        ro_textarea.wait_for(state="visible", timeout=10000)
+        ro_textarea.fill("Please furnish supplementary tripartite confirmation from bank manager.")
+        confirm_decision_btn = page.locator("[data-testid='confirm-decision-btn']").first
+        confirm_decision_btn.click()
+        time.sleep(1.5)
+        print("[+] RO requested clarification on FDR-APEX-002")
+
+        # Switch to Maker to respond to clarification
+        print("[*] Maker: Responding to RO clarification on FDR-APEX-002")
+        switch_to_persona("Aakash Verma", "INSTITUTION_MAKER", "maker_apex")
+        time.sleep(1)
+
+        # Locate FDR-APEX-002 row
+        apex_002_row = page.locator("[data-testid='fdr-row-FDR-APEX-002']").first
+        apex_002_row.wait_for(state="visible", timeout=10000)
+        page.locator("text=Clarification Requested").first.wait_for(state="visible", timeout=10000)
+        page.locator("[data-testid='ro-clarification-remarks']").first.wait_for(state="visible", timeout=10000)
+
+        # Click Respond button
+        respond_btn = page.locator("[data-testid='respond-clarification-btn-FDR-APEX-002']").first
+        respond_btn.wait_for(state="visible", timeout=10000)
+        respond_btn.click()
+        time.sleep(0.5)
+
+        # Fill clarification response note and resubmit
+        clarify_note_area = page.locator("[data-testid='clarification-response-textarea']").first
+        clarify_note_area.wait_for(state="visible", timeout=10000)
+        clarify_note_area.fill("Supplementary bank confirmation verified and attached.")
+        submit_clarify_btn = page.locator("[data-testid='submit-clarification-btn']").first
+        submit_clarify_btn.click()
+        time.sleep(2)
+        print("[+] Maker successfully responded to clarification; claim back in Under Checker Review")
+
+        # Return to RO to verify Decay Watchlist
+        switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER", "ro_north")
+        time.sleep(1)
+        watchlist_tab = page.locator("[data-testid='decay-watchlist-tab']").first
         watchlist_tab.wait_for(state="visible", timeout=10000)
         watchlist_tab.click()
         page.locator("text=Regional Proof-Score Decay Watchlist").first.wait_for(state="visible", timeout=10000)
@@ -248,7 +289,7 @@ def run():
 
         # --- 3.4: Bank Verifier: CBS Attestation ---
         print("\n[3.4] Bank Verifier: Confirming CBS match")
-        switch_to_persona("Rajiv Sharma", "BANK_VERIFIER")
+        switch_to_persona("Rajiv Sharma", "BANK_VERIFIER", "bank_sbi")
         time.sleep(1)
 
         page.locator("text=State Bank of India — CBS Attestation Desk").first.wait_for(state="visible", timeout=10000)
@@ -268,17 +309,18 @@ def run():
 
         # --- 3.5: Scrutiny Officer: Possible Duplicate Risk Signals & Liabilities ---
         print("\n[3.5] Scrutiny Officer: Possible Duplicate Detector and Liabilities")
-        switch_to_persona("Arjun Nair", "SCRUTINY_OFFICER")
+        switch_to_persona("Arjun Nair", "SCRUTINY_OFFICER", "scrutiny_officer")
         time.sleep(1)
 
         # Assert Possible Duplicate Risk Signal
+        page.locator("[data-testid='duplicate-signals-tab']").first.click()
         page.locator("text=POSSIBLE_DUPLICATE_RISK_SIGNAL").first.wait_for(state="visible", timeout=10000)
         page.locator("text=Risk signal, needs officer review").first.wait_for(state="visible", timeout=10000)
         page.locator("text=Apex Institute of Technology").first.wait_for(state="visible", timeout=10000)
         page.locator("text=Bharati Polytechnic").first.wait_for(state="visible", timeout=10000)
 
-        # Click Grievance & Liabilities Ledger tab
-        page.locator("button:has-text('Grievance & Liabilities Ledger')").first.click()
+        # Click Grievance & Liabilities Ledger tab using data-testid
+        page.locator("[data-testid='liabilities-ledger-tab']").first.click()
         page.locator("text=LIAB-001").first.wait_for(state="visible", timeout=10000)
 
         demo_5_screenshot = os.path.join(SCREENSHOTS_DIR, "demo_05_scrutiny_signals.png")
@@ -287,17 +329,17 @@ def run():
 
         # --- 3.6: AICTE HQ Admin: Tamper simulation & Reset ---
         print("\n[3.6] AICTE Admin: Tamper demonstration and full reset")
-        switch_to_persona("Prof. Anil Sahasrabudhe", "AICTE_ADMIN")
+        switch_to_persona("Prof. Anil Sahasrabudhe", "AICTE_ADMIN", "aicte_admin")
         time.sleep(1)
 
-        # Trigger Malicious Tamper
-        tamper_btn = page.locator("button:has-text('Simulate Malicious Tampering')").first
+        # Trigger Malicious Tamper using data-testid
+        tamper_btn = page.locator("[data-testid='simulate-tamper-btn']").first
         tamper_btn.wait_for(state="visible", timeout=10000)
         tamper_btn.click()
         page.locator("text=TAMPER DETECTED!").first.wait_for(state="visible", timeout=10000)
 
-        # Reset Entire Demo Database
-        reset_btn = page.locator("button:has-text('Reset Entire Demo Database')").first
+        # Reset Entire Demo Database using data-testid
+        reset_btn = page.locator("[data-testid='reset-database-btn']").first
         reset_btn.wait_for(state="visible", timeout=15000)
         reset_btn.click()
         page.locator("text=Chain Intact").first.wait_for(state="visible", timeout=30000)
@@ -329,9 +371,9 @@ def run():
 
         # 4.1: Regional Officer Day 200: FDR-APEX-003 early closure appears on Decay Watchlist with dropped score
         print("\n[4.1] Regional Officer: Checking Day 200 Decay Watchlist for FDR-APEX-003")
-        switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER")
+        switch_to_persona("Dr. Vikram Seth", "REGIONAL_OFFICER", "ro_north")
         time.sleep(1)
-        ro_watchlist_tab = page.locator("button:has-text('Proof-Score Decay Watchlist')").first
+        ro_watchlist_tab = page.locator("[data-testid='decay-watchlist-tab']").first
         ro_watchlist_tab.wait_for(state="visible", timeout=10000)
         ro_watchlist_tab.click()
         time.sleep(1)
@@ -343,7 +385,7 @@ def run():
 
         # 4.2: Bank Verifier (PNB) Day 200: FDR-APEX-003 is Closed Early, FDR-APEX-002 is Discrepancy Locked
         print("\n[4.2] Bank Verifier (PNB): Checking Day 200 status on FDR-APEX-003 and FDR-APEX-002")
-        switch_to_persona("Priya Patel", "BANK_VERIFIER")
+        switch_to_persona("Priya Patel", "BANK_VERIFIER", "bank_pnb")
         time.sleep(1)
         page.locator("text=Punjab National Bank — CBS Attestation Desk").first.wait_for(state="visible", timeout=10000)
         
@@ -360,7 +402,7 @@ def run():
 
         # 4.3: Scrutiny Officer Day 200: FDR-APEX-003 appears in Decay & Early-Closure Watchlist
         print("\n[4.3] Scrutiny Officer: Checking Day 200 Early Closure on National Watchlist")
-        switch_to_persona("Arjun Nair", "SCRUTINY_OFFICER")
+        switch_to_persona("Arjun Nair", "SCRUTINY_OFFICER", "scrutiny_officer")
         time.sleep(1)
         scrutiny_watchlist_tab = page.locator("button:has-text('Decay & Early-Closure Watchlist')").first
         scrutiny_watchlist_tab.wait_for(state="visible", timeout=10000)
@@ -373,7 +415,7 @@ def run():
 
         # 4.4: Maker (Apex) Day 200: FDR-APEX-002 discrepancy lock visible; CANNOT see FDR-BHARATI-001
         print("\n[4.4] Institution Maker: Checking Discrepancy Lock and strict institutional isolation")
-        switch_to_persona("Aakash Verma", "INSTITUTION_MAKER")
+        switch_to_persona("Aakash Verma", "INSTITUTION_MAKER", "maker_apex")
         time.sleep(1)
         
         # FDR-APEX-002 discrepancy lock is visible

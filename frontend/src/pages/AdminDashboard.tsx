@@ -211,6 +211,7 @@ export const AdminDashboard: React.FC = () => {
               Mutate Event #1 in the database directly. Verifies that SHA-256 hash chaining detects unauthorized edits.
             </p>
             <button
+              data-testid="simulate-tamper-btn"
               onClick={() => simulateTamperMutation.mutate(1)}
               disabled={simulateTamperMutation.isPending}
               className="w-full py-2 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-200 font-semibold border border-red-800 flex items-center justify-center space-x-1.5"
@@ -233,6 +234,7 @@ export const AdminDashboard: React.FC = () => {
               Restore entire database, 10 personas, 6 FDRs, and mock adapters to Day 0 initial state.
             </p>
             <button
+              data-testid="reset-database-btn"
               onClick={() => resetDemoMutation.mutate()}
               disabled={resetDemoMutation.isPending}
               className="w-full py-2 rounded-lg bg-teal-950/80 hover:bg-teal-900 text-teal-200 font-semibold border border-teal-800 flex items-center justify-center space-x-1.5"

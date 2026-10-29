@@ -197,8 +197,8 @@ export const Header: React.FC<HeaderProps> = ({
             {/* User Profile & Context Badge */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs">
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-white">{user?.name || 'Authorized User'}</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
+                <span className="font-bold text-white" data-testid="header-user-name">{user?.name || 'Authorized User'}</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800" data-testid="header-user-role">
                   {user?.role}
                 </span>
               </div>
@@ -210,6 +210,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Switch Role Button */}
             <button
               onClick={() => setSwitchPersonaModalOpen(true)}
+              data-testid="switch-role-btn"
               className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-md shadow-teal-900/30"
               title="Switch demo persona"
             >

@@ -113,6 +113,7 @@ export const ScrutinyDashboard: React.FC = () => {
       {/* Tabs */}
       <div className="flex space-x-2 border-b border-slate-800 pb-2">
         <button
+          data-testid="duplicate-signals-tab"
           onClick={() => setActiveTab('duplicates')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'duplicates'
@@ -125,6 +126,7 @@ export const ScrutinyDashboard: React.FC = () => {
         </button>
 
         <button
+          data-testid="liabilities-ledger-tab"
           onClick={() => setActiveTab('liabilities')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'liabilities'

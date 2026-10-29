@@ -121,7 +121,7 @@ export const CheckerDashboard: React.FC = () => {
             {pendingFDRs.map((fdr) => {
               const isCreator = fdr.created_by === user?.id;
               return (
-                <div key={fdr.id} className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div key={fdr.id} data-testid={`fdr-row-${fdr.id}`} className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
@@ -143,6 +143,7 @@ export const CheckerDashboard: React.FC = () => {
                   </div>
 
                   <button
+                    data-testid={`review-verify-btn-${fdr.id}`}
                     onClick={() => {
                       setSelectedFdr(fdr);
                       setRemarks('');
@@ -250,6 +251,7 @@ export const CheckerDashboard: React.FC = () => {
               <div className="flex items-center space-x-2.5">
                 <button
                   type="button"
+                  data-testid="return-submission-btn"
                   onClick={() =>
                     reviewMutation.mutate({
                       fdrId: selectedFdr.id,
@@ -265,6 +267,7 @@ export const CheckerDashboard: React.FC = () => {
 
                 <button
                   type="button"
+                  data-testid="approve-submission-btn"
                   onClick={() =>
                     reviewMutation.mutate({
                       fdrId: selectedFdr.id,

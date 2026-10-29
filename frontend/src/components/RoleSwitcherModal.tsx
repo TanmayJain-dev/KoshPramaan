@@ -105,6 +105,7 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({ isOpen, on
             return (
               <button
                 key={u.username}
+                data-testid={`persona-btn-${u.username}`}
                 onClick={async () => {
                   await loginAsUsername(u.username);
                   onClose();

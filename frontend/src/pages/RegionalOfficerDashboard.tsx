@@ -152,6 +152,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
       {/* Navigation Tabs */}
       <div className="flex space-x-2 border-b border-slate-800 pb-2">
         <button
+          data-testid="pending-queue-tab"
           onClick={() => setActiveTab('queue')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'queue'
@@ -164,6 +165,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
         </button>
 
         <button
+          data-testid="decay-watchlist-tab"
           onClick={() => setActiveTab('decay_watchlist')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center space-x-2 ${
             activeTab === 'decay_watchlist'
@@ -206,7 +208,11 @@ export const RegionalOfficerDashboard: React.FC = () => {
           ) : (
             <div className="divide-y divide-slate-800/60">
               {pendingQueue.map((fdr) => (
-                <div key={fdr.id} className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div
+                  key={fdr.id}
+                  data-testid={`fdr-row-${fdr.id}`}
+                  className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2.5">
                       <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
@@ -228,6 +234,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
 
                   <div className="flex items-center space-x-2">
                     <button
+                      data-testid={`sanction-btn-${fdr.id}`}
                       onClick={() => {
                         setSelectedFdr(fdr);
                         setActionType('approve');
@@ -240,6 +247,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
                     </button>
 
                     <button
+                      data-testid={`clarify-btn-${fdr.id}`}
                       onClick={() => {
                         setSelectedFdr(fdr);
                         setActionType('clarify');
@@ -401,6 +409,7 @@ export const RegionalOfficerDashboard: React.FC = () => {
               </button>
               <button
                 type="button"
+                data-testid="confirm-decision-btn"
                 onClick={() =>
                   roActionMutation.mutate({
                     fdrId: selectedFdr.id,

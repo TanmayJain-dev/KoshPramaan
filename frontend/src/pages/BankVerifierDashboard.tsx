@@ -115,7 +115,11 @@ export const BankVerifierDashboard: React.FC = () => {
             const isLocked = fdr.status === 'discrepancy_locked';
 
             return (
-              <div key={fdr.id} className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+              <div
+                key={fdr.id}
+                data-testid={`fdr-row-${fdr.id}`}
+                className="p-6 hover:bg-slate-800/20 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs"
+              >
                 <div className="space-y-1.5">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-bold text-white">{fdr.receipt_no}</span>
@@ -148,6 +152,7 @@ export const BankVerifierDashboard: React.FC = () => {
 
                 <div className="flex items-center space-x-2.5">
                   <button
+                    data-testid={`cbs-confirm-btn-${fdr.id}`}
                     onClick={() =>
                       verifyMutation.mutate({
                         fdrId: fdr.id,
@@ -163,6 +168,7 @@ export const BankVerifierDashboard: React.FC = () => {
                   </button>
 
                   <button
+                    data-testid={`cbs-flag-mismatch-btn-${fdr.id}`}
                     onClick={() => {
                       setSelectedFdr(fdr);
                       setIsMismatchModalOpen(true);

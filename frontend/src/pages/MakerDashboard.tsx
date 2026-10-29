@@ -24,7 +24,11 @@ export const MakerDashboard: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isClarifyModalOpen, setIsClarifyModalOpen] = useState(false);
+  const [selectedClarifyFdr, setSelectedClarifyFdr] = useState<FDR | null>(null);
+  const [clarifyNotes, setClarifyNotes] = useState<string>('');
+  const [clarifyPrincipal, setClarifyPrincipal] = useState<number>(0);
+  const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<FDRCreateData>({
@@ -41,9 +45,10 @@ export const MakerDashboard: React.FC = () => {
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [isHashing, setIsHashing] = useState<boolean>(false);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+  const showToast = (msg: string, type: 'info' | 'error' = 'info') => {
+    const isError = type === 'error' || msg.toLowerCase().includes('cannot') || msg.toLowerCase().includes('conflict') || msg.toLowerCase().includes('error') || msg.toLowerCase().includes('409');
+    setToastMessage({ text: msg, isError });
+    setTimeout(() => setToastMessage(null), 5000);
   };
 
   // Queries
@@ -79,7 +84,7 @@ export const MakerDashboard: React.FC = () => {
       setUploadedFileName('');
       showToast(`Draft claim ${newFdr.id} created successfully! You can now forward it to the Checker.`);
     },
-    onError: (err: any) => showToast(err.message),
+    onError: (err: any) => showToast(err.message, 'error'),
   });
 
   const submitMutation = useMutation({
@@ -88,7 +93,23 @@ export const MakerDashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['fdrs'] });
       showToast(`Claim ${updated.id} submitted to Institution Checker for internal verification.`);
     },
-    onError: (err: any) => showToast(err.message),
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
+  const resubmitMutation = useMutation({
+    mutationFn: async ({ fdrId, principal, notes }: { fdrId: string; principal?: number; notes: string }) => {
+      if (principal !== undefined) {
+        await apiClient.updateDraftFDR(fdrId, { principal });
+      }
+      return apiClient.submitFDRToChecker(fdrId, notes);
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['fdrs'] });
+      setIsClarifyModalOpen(false);
+      setSelectedClarifyFdr(null);
+      showToast(`Claim ${updated.id} resubmitted to Checker with clarification remarks.`);
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
   });
 
   // Client-side SHA-256 calculation for upload dropzone
@@ -115,19 +136,21 @@ export const MakerDashboard: React.FC = () => {
   const getWorkflowBadge = (status: FDR['workflow_status']) => {
     switch (status) {
       case 'DRAFT':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">Draft</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">Draft</span>;
       case 'SUBMITTED':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1"><Clock className="w-3 h-3" /> Under Checker Review</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-950 text-blue-300 border border-blue-800 flex items-center gap-1"><Clock className="w-3 h-3" /> Under Checker Review</span>;
       case 'CHECKER_APPROVED':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Checker Approved</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Checker Approved</span>;
       case 'RO_APPROVED':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Sanctioned by RO</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Sanctioned by RO</span>;
       case 'RO_REJECTED':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-950 text-red-300 border border-red-800">Rejected by RO</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-950 text-red-300 border border-red-800">Rejected by RO</span>;
       case 'RETURNED_TO_MAKER':
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Returned for Revision</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Returned for Revision</span>;
+      case 'CLARIFICATION_REQUESTED':
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950 text-amber-300 border border-amber-800 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Clarification Requested</span>;
       default:
-        return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">{status}</span>;
+        return <span data-testid="fdr-status-pill" className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">{status}</span>;
     }
   };
 
@@ -137,9 +160,20 @@ export const MakerDashboard: React.FC = () => {
     <div className="space-y-8">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-teal-500 text-teal-200 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-sm font-medium">
-          <CheckCircle2 className="w-4 h-4 text-teal-400" />
-          <span>{toastMessage}</span>
+        <div 
+          data-testid="toast-message"
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-sm font-medium border ${
+            toastMessage.isError
+              ? 'bg-red-950 border-red-500 text-red-200'
+              : 'bg-slate-900 border-teal-500 text-teal-200'
+          }`}
+        >
+          {toastMessage.isError ? (
+            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-teal-400 flex-shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
         </div>
       )}
 
@@ -164,6 +198,7 @@ export const MakerDashboard: React.FC = () => {
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
+            data-testid="new-fdr-claim-btn"
             className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-sm transition flex items-center space-x-2 shadow-lg shadow-teal-900/30"
           >
             <Plus className="w-4 h-4" />
@@ -212,7 +247,7 @@ export const MakerDashboard: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-medium text-slate-200">
               {fdrs.map((fdr) => (
-                <tr key={fdr.id} className="hover:bg-slate-800/30 transition">
+                <tr key={fdr.id} data-testid={`fdr-row-${fdr.id}`} className="hover:bg-slate-800/30 transition">
                   <td className="px-6 py-4">
                     <div className="font-bold text-white">{fdr.receipt_no}</div>
                     <div className="text-[11px] font-mono text-slate-400">{fdr.id}</div>
@@ -229,6 +264,11 @@ export const MakerDashboard: React.FC = () => {
                     {fdr.workflow_status === 'RETURNED_TO_MAKER' && fdr.checker_remarks && (
                       <div className="mt-1 text-[11px] text-amber-300 bg-amber-950/60 p-1.5 rounded border border-amber-900/60 max-w-xs">
                         <strong>Checker Note:</strong> {fdr.checker_remarks}
+                      </div>
+                    )}
+                    {fdr.workflow_status === 'CLARIFICATION_REQUESTED' && fdr.ro_remarks && (
+                      <div className="mt-1 text-[11px] text-amber-300 bg-amber-950/60 p-1.5 rounded border border-amber-900/60 max-w-xs" data-testid="ro-clarification-remarks">
+                        <strong>RO Clarification Note:</strong> {fdr.ro_remarks}
                       </div>
                     )}
                   </td>
@@ -253,12 +293,27 @@ export const MakerDashboard: React.FC = () => {
                   <td className="px-6 py-4 text-right">
                     {(fdr.workflow_status === 'DRAFT' || fdr.workflow_status === 'RETURNED_TO_MAKER') ? (
                       <button
+                        data-testid={`submit-btn-${fdr.id}`}
                         onClick={() => submitMutation.mutate(fdr.id)}
                         disabled={submitMutation.isPending}
                         className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition inline-flex items-center space-x-1 shadow-md shadow-blue-900/40"
                       >
                         <Send className="w-3 h-3" />
                         <span>Submit to Checker</span>
+                      </button>
+                    ) : fdr.workflow_status === 'CLARIFICATION_REQUESTED' ? (
+                      <button
+                        data-testid={`respond-clarification-btn-${fdr.id}`}
+                        onClick={() => {
+                          setSelectedClarifyFdr(fdr);
+                          setClarifyPrincipal(fdr.principal);
+                          setClarifyNotes('');
+                          setIsClarifyModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs transition inline-flex items-center space-x-1 shadow-md shadow-amber-900/40"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>Respond &amp; Resubmit</span>
                       </button>
                     ) : (
                       <span className="text-slate-500 text-[11px] italic">Locked in workflow</span>
@@ -419,6 +474,89 @@ export const MakerDashboard: React.FC = () => {
                   className="px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold shadow-md shadow-teal-900/30"
                 >
                   {createMutation.isPending ? 'Saving...' : 'Save Draft Claim'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Clarification Response Modal */}
+      {isClarifyModalOpen && selectedClarifyFdr && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-700/80 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+                  <span>Respond to Regional Clarification</span>
+                </h3>
+                <p className="text-xs text-slate-400 font-mono">Claim: {selectedClarifyFdr.id} ({selectedClarifyFdr.receipt_no})</p>
+              </div>
+              <button onClick={() => setIsClarifyModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Display RO Remarks */}
+            <div className="bg-amber-950/40 border border-amber-800/80 p-4 rounded-xl space-y-1.5 text-xs text-amber-200">
+              <strong className="block font-semibold uppercase tracking-wider text-[10px] text-amber-400">RO Inquiry / Directive:</strong>
+              <p className="leading-relaxed">{selectedClarifyFdr.ro_remarks || 'Please provide clarification or correction for this claim.'}</p>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                resubmitMutation.mutate({
+                  fdrId: selectedClarifyFdr.id,
+                  principal: clarifyPrincipal,
+                  notes: clarifyNotes,
+                });
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">Principal Amount (₹)</label>
+                <input
+                  type="number"
+                  required
+                  min={10000}
+                  step={10000}
+                  value={clarifyPrincipal}
+                  onChange={(e) => setClarifyPrincipal(parseFloat(e.target.value) || 0)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">Clarification Response Note *</label>
+                <textarea
+                  data-testid="clarification-response-textarea"
+                  rows={3}
+                  required
+                  value={clarifyNotes}
+                  onChange={(e) => setClarifyNotes(e.target.value)}
+                  placeholder="Explain corrections made or provide supplementary context for the Checker and RO..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsClarifyModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  data-testid="submit-clarification-btn"
+                  disabled={resubmitMutation.isPending}
+                  className="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-md shadow-amber-900/30 flex items-center space-x-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{resubmitMutation.isPending ? 'Resubmitting...' : 'Resubmit to Checker'}</span>
                 </button>
               </div>
             </form>

@@ -86,6 +86,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
           {demoUsers.slice(0, 6).map((u) => (
             <button
               key={u.username}
+              data-testid={`login-persona-${u.username}`}
               onClick={() => handleSelectPersona(u.username)}
               disabled={isLoading}
               className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 hover:bg-slate-850 p-5 rounded-2xl text-left transition flex flex-col justify-between space-y-4 hover:shadow-xl hover:shadow-blue-950/30 group"
