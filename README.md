@@ -42,7 +42,7 @@ Each role in KoshPramaan experiences a tailored workspace with distinct data iso
 - **Backend**: FastAPI (Python 3.13), SQLAlchemy, SQLite (`koshpramaan.db`), PostgreSQL-ready.
 - **Clock Machine**: Dedicated `ClockService` powering deterministic simulation (`clock.now()`, never system wall clock).
 - **Integrity**: Append-only SHA-256 hash-chained audit ledger with real-time tamper detection.
-- **Testing**: `pytest` (90 tests covering RBAC, data scoping, token security, and `maker != checker`), Playwright (automated browser e2e with 13 full-page screenshots).
+- **Testing**: `pytest` (97 tests covering RBAC, state machine transitions, data scoping, token security, and `maker != checker`), Playwright (automated browser e2e with 13 full-page screenshots).
 
 ---
 
@@ -133,14 +133,14 @@ All endpoints support both `/api/*` and root `/*` routing. All endpoints require
 
 ## 7. Verification & Automated Test Suites
 
-### Backend Pytest Suite (90/90 Passing)
+### Backend Pytest Suite (97/97 Passing)
 ```bash
 make test
 ```
-- `tests/test_phase1.py` (5 tests): Seed integrity, clock machine, SHA-256 chain, MockBank adapter.
+- `tests/test_phase1.py` (7 tests): Seed integrity, clock machine, SHA-256 chain, MockBank adapter, header bypass rejection (`X-User-Role` alone returns `HTTP 401`), and expired/tampered JWT rejection.
 - `tests/test_rbac_and_workflow.py` (7 tests): Workflow lifecycle transitions, Maker-Checker segregation enforcement (`HTTP 403 Forbidden`).
 - `tests/test_rbac_matrix.py` (76 tests): Comprehensive 6 roles $\times$ all endpoints RBAC matrix, data scoping isolation (Maker, RO, Bank Verifier), and self-approval block (`HTTP 403 Forbidden`).
-- `tests/test_auth_security.py` (2 tests): Rejection of header bypass (`X-User-Role` alone returns `HTTP 401 Unauthorized`), rejection of expired or tampered JWTs (`HTTP 401 Unauthorized`).
+- `tests/test_state_machine_and_visibility.py` (7 tests): State machine transitions and 409 Conflict enforcement (`ro-review` on draft, `bank-verify` on draft, clarification cycle), self-approval block on submission, early draft exclusion from RO/Bank scopes, `duplicate_count` hidden from non-scrutiny roles, and endpoint consistency across `/institutions` and `/fdrs` at Day 200.
 
 ### Frontend Browser Verification (Playwright E2E)
 ```bash
